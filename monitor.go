@@ -36,6 +36,6 @@ func (m *monitor) Errors() chan error {
 	return m.errors
 }
 
-func (m *monitor) Directory() string {
+func (m *monitor) Dir() string {
 	return m.dir
 }

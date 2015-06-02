@@ -1,22 +1,19 @@
 package watch
 
 import (
-	"io/ioutil"
 	"testing"
+	"time"
 )
 
-func TestMonitorInterfaceCompliance(t *testing.T) {
-	tdir, err := ioutil.TempDir("", ".timeglass_watch")
-	if err != nil {
-		t.Fatalf("Failed to create test directory: %s", err)
-	}
+var Timeout = time.Millisecond * 300 //how long to wait for the expected nr of events
 
-	var m M
+func TestFileCreationEvent(t *testing.T) {
+	m := setupTestDirMonitor(t)
+	done := waitForNEvents(m, 1, Timeout)
 
-	m, err = NewMonitor(tdir)
-	if err != nil {
-		t.Fatalf("Failed to monitor: %s", err)
-	}
+	doCreateFile(m, "file_1.md", t)
 
-	_ = m
+	res := <-done
+	assertNoErrors(t, res.errs)
+	assertNthDirEvent(t, res.evs, 0, m.Dir())
 }
