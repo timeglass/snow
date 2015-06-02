@@ -27,10 +27,12 @@ func setupTestDir(t *testing.T) string {
 		t.Fatalf("Failed to create test directory: %s", err)
 	}
 
-	_, err = os.Create(filepath.Join(tdir, "existing_file_1.md"))
+	f1, err := os.Create(filepath.Join(tdir, "existing_file_1.md"))
 	if err != nil {
 		t.Fatalf("Failed to create test directory existing file: '%s'", err)
 	}
+
+	defer f1.Close()
 
 	err = os.MkdirAll(filepath.Join(tdir, "existing_dir", "existing_sub_dir"), 744)
 	if err != nil {
