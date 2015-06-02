@@ -33,11 +33,6 @@ func setupTestDirMonitor(t *testing.T) M {
 		t.Fatalf("Failed to create monitor: %s", err)
 	}
 
-	_, err = m.Start()
-	if err != nil {
-		t.Fatalf("Failed to start monitor: %s", err)
-	}
-
 	return m
 }
 
@@ -64,7 +59,7 @@ func doCreateFolders(t *testing.T, m M, name ...string) string {
 	return path
 }
 
-func waitForNEvents(m M, n int, to time.Duration) chan *results {
+func waitForNEvents(t *testing.T, m M, n int, to time.Duration) chan *results {
 	done := make(chan *results)
 	ress := &results{
 		errs: []error{},
@@ -92,6 +87,11 @@ func waitForNEvents(m M, n int, to time.Duration) chan *results {
 
 		done <- ress
 	}()
+
+	_, err := m.Start()
+	if err != nil {
+		t.Fatalf("Failed to start monitor: %s", err)
+	}
 
 	return done
 }

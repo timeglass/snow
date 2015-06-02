@@ -9,7 +9,7 @@ var Timeout = time.Millisecond * 300 //how long to wait for the expected nr of e
 
 func TestFileCreation(t *testing.T) {
 	m := setupTestDirMonitor(t)
-	done := waitForNEvents(m, 1, Timeout)
+	done := waitForNEvents(t, m, 1, Timeout)
 
 	doCreateFile(t, m, "file_1.md")
 
@@ -20,7 +20,7 @@ func TestFileCreation(t *testing.T) {
 
 func TestFolderCreation(t *testing.T) {
 	m := setupTestDirMonitor(t)
-	done := waitForNEvents(m, 2, Timeout)
+	done := waitForNEvents(t, m, 2, Timeout)
 
 	dir := doCreateFolders(t, m, "folder_1")
 	doCreateFile(t, m, "folder_1", "file_1.md")
@@ -32,7 +32,7 @@ func TestFolderCreation(t *testing.T) {
 
 func TestSubFolderCreation(t *testing.T) {
 	m := setupTestDirMonitor(t)
-	done := waitForNEvents(m, 3, Timeout)
+	done := waitForNEvents(t, m, 3, Timeout)
 
 	dir := doCreateFolders(t, m, "folder_1", "sub_folder_1")
 	doCreateFile(t, m, "folder_1", "sub_folder_1", "file_1.md")
