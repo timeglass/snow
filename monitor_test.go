@@ -1,6 +1,7 @@
 package watch
 
 import (
+	"path/filepath"
 	"testing"
 	"time"
 )
@@ -113,5 +114,7 @@ func TestSubFolderCreation(t *testing.T) {
 
 	res := <-done
 	assertNoErrors(t, res.errs)
+	assertNthDirEvent(t, res.evs, 1, m.Dir())
+	assertNthDirEvent(t, res.evs, 2, filepath.Join(m.Dir(), "folder_1"))
 	assertNthDirEvent(t, res.evs, 3, dir)
 }

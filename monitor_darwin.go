@@ -54,8 +54,3 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 
 	return m.Events(), nil
 }
-
-func (m *Monitor) Stop() error {
-	m.es.Stop()
-	return nil
-}

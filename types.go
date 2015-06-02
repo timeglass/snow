@@ -11,5 +11,4 @@ type M interface {
 	Events() chan DirEvent
 	Errors() chan error
 	Dir() string
-	Stop() error
 }
