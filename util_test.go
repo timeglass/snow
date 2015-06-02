@@ -41,12 +41,27 @@ func setupTestDirMonitor(t *testing.T) M {
 	return m
 }
 
-func doCreateFile(m M, name string, t *testing.T) {
-	path := filepath.Join(m.Dir(), name)
+func doCreateFile(t *testing.T, m M, name ...string) string {
+	path := filepath.Join(name...)
+	path = filepath.Join(m.Dir(), path)
 	_, err := os.Create(path)
 	if err != nil {
-		t.Fatalf("Failed to creat test file: '%s': '%s'", path, err)
+		t.Fatalf("Failed to create test file: '%s': '%s'", path, err)
 	}
+
+	return path
+}
+
+func doCreateFolders(t *testing.T, m M, name ...string) string {
+	path := filepath.Join(name...)
+	path = filepath.Join(m.Dir(), path)
+
+	err := os.MkdirAll(path, 0744)
+	if err != nil {
+		t.Fatalf("Failed to create test directory: '%s': '%s'", path, err)
+	}
+
+	return path
 }
 
 func waitForNEvents(m M, n int, to time.Duration) chan *results {
@@ -81,13 +96,12 @@ func waitForNEvents(m M, n int, to time.Duration) chan *results {
 	return done
 }
 
-func assertNthDirEvent(t *testing.T, evs []DirEvent, idx int, dir string) {
-	n := idx + 1
+func assertNthDirEvent(t *testing.T, evs []DirEvent, n int, dir string) {
 	if len(evs) < n {
 		t.Fatalf("Expected at least %d event(s), received only: %d", n, len(evs))
 	}
 
-	ev := evs[idx]
+	ev := evs[n-1]
 
 	fi1, err := os.Stat(dir)
 	if err != nil {
@@ -100,7 +114,7 @@ func assertNthDirEvent(t *testing.T, evs []DirEvent, idx int, dir string) {
 	}
 
 	if !os.SameFile(fi1, fi2) {
-		t.Fatalf("Expected something to have happend in '%s', instead event %d was about %s", dir, idx, ev.Dir())
+		t.Fatalf("Expected something to have happend in '%s', instead event nr %d was about %s", dir, n, ev.Dir())
 	}
 
 }
