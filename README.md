@@ -24,9 +24,9 @@ platform | subsystem | recursive | event file details
 --- | --- | --- | ---
 Linux | inotify | no, not configurable | high
 Windows | ReadDirectoryChangesW | configurable | high
-OSX | FSEvents | yes, not configurable | no
+OSX | FSEvents | yes, not configurable | low
 
-OSX is the main culprit, it forces the implementation to be recursive by default and doesn't provide specifics on how a file changed.
+As you may notice, OSX is the main culprit. It forces the implementation to be recursive by default and doesn't provide specifics on how a file changed.
 
 ##The Solution
 In my opinion one has to simply accept the limitations of FSEvent and use their "something happened in a directory" as the abstraction. This effectively delegates the logic for on how to handles events for specific files in that directory to the consumer of the library. 
@@ -35,7 +35,8 @@ In practice, this actually makes sense. It often up to the implementation to det
 
 - did the file content actually change or just the timestampe? 
 - what do renames actually mean, is it another file or was it moved?
-- what about atomic saves that some IDE's use, are those truly two events or do you want to handle them as a file modification
+- when files are moved outside the monitored directory, should those be considered as removals?
+- what about atomic saves that some IDE's use, are those truly two events or do you want to handle them as a file modification?
 
 ## The interface
 <wip>

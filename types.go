@@ -1,13 +1,10 @@
 package watch
 
-import (
-	"time"
-)
-
 type DirEvent interface {
 	Dir() string
-	Time() time.Time
 }
+
+type Selector func(root, path string) (bool, error)
 
 type M interface {
 	Start() (chan DirEvent, error)

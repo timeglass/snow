@@ -13,11 +13,15 @@ type Monitor struct {
 	*monitor
 }
 
-func NewMonitor(dir string) (*Monitor, error) {
-	mon := newMonitor(dir)
+func NewMonitor(dir string, sel Selector, latency time.Duration) (*Monitor, error) {
+	mon, err := newMonitor(dir, sel)
+	if err != nil {
+		return nil, err
+	}
+
 	es := &fsevents.EventStream{
-		Latency: time.Millisecond * 80,
-		Paths:   []string{dir},
+		Latency: latency,
+		Paths:   []string{mon.Dir()},
 		Flags:   fsevents.WatchRoot,
 	}
 
@@ -33,7 +37,17 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 	go func() {
 		for msg := range m.es.Events {
 			for _, ev := range msg {
-				m.events <- &mevent{ev.Path, time.Now()}
+				res, err := m.IsSelected(ev.Path)
+				if err != nil {
+					m.errors <- err
+					continue
+				}
+
+				//for fsevent, only emit
+				//events that match selector
+				if res {
+					m.events <- &mevent{ev.Path}
+				}
 			}
 		}
 	}()

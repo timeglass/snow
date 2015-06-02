@@ -2,12 +2,17 @@ package watch
 
 import (
 	"errors"
+	// "fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 )
+
+var Latency = time.Millisecond * 20
+var Timeout = time.Second * 100
+var SettleTime = time.Millisecond * 40
 
 var errEventTimeout = errors.New("Timed out waiting for a monitor event or error")
 
@@ -22,13 +27,25 @@ func setupTestDir(t *testing.T) string {
 		t.Fatalf("Failed to create test directory: %s", err)
 	}
 
+	_, err = os.Create(filepath.Join(tdir, "existing_file_1.md"))
+	if err != nil {
+		t.Fatalf("Failed to create test directory existing file: '%s'", err)
+	}
+
+	err = os.MkdirAll(filepath.Join(tdir, "existing_dir", "existing_sub_dir"), 744)
+	if err != nil {
+		t.Fatalf("Failed to create existing test dirs: '%s'", err)
+	}
+
+	<-time.After(SettleTime)
+
 	return tdir
 }
 
-func setupTestDirMonitor(t *testing.T) M {
+func setupTestDirMonitor(t *testing.T, sel Selector) M {
 	tdir := setupTestDir(t)
 
-	m, err := NewMonitor(tdir)
+	m, err := NewMonitor(tdir, sel, Latency)
 	if err != nil {
 		t.Fatalf("Failed to create monitor: %s", err)
 	}
@@ -36,12 +53,49 @@ func setupTestDirMonitor(t *testing.T) M {
 	return m
 }
 
-func doCreateFile(t *testing.T, m M, name ...string) string {
+func doSettle() {
+	<-time.After(Latency + (time.Millisecond * 80))
+}
+
+func doMove(t *testing.T, m M, parts ...string) {
+	from := []string{m.Dir()}
+	to := []string{m.Dir()}
+
+	s := false
+	for _, p := range parts {
+		if p == "->" {
+			s = true
+			continue
+		}
+
+		if s {
+			to = append(to, p)
+		} else {
+			from = append(from, p)
+		}
+	}
+
+	err := os.Rename(filepath.Join(from...), filepath.Join(to...))
+	if err != nil {
+		t.Fatalf("Failed to rename from '%s' to '%s': '%s'", from, to, err)
+	}
+}
+
+func doRemove(t *testing.T, m M, name ...string) {
 	path := filepath.Join(name...)
 	path = filepath.Join(m.Dir(), path)
-	_, err := os.Create(path)
+	err := os.RemoveAll(path)
 	if err != nil {
-		t.Fatalf("Failed to create test file: '%s': '%s'", path, err)
+		t.Fatalf("Failed to remove '%s': '%s'", path, err)
+	}
+}
+
+func doWriteFile(t *testing.T, m M, data string, name ...string) string {
+	path := filepath.Join(name...)
+	path = filepath.Join(m.Dir(), path)
+	err := ioutil.WriteFile(path, []byte(data), 644)
+	if err != nil {
+		t.Fatalf("Failed to write file '%s': '%s'", path, err)
 	}
 
 	return path
@@ -59,7 +113,7 @@ func doCreateFolders(t *testing.T, m M, name ...string) string {
 	return path
 }
 
-func waitForNEvents(t *testing.T, m M, n int, to time.Duration) chan *results {
+func waitForNEvents(t *testing.T, m M, n int) chan *results {
 	done := make(chan *results)
 	ress := &results{
 		errs: []error{},
@@ -79,7 +133,7 @@ func waitForNEvents(t *testing.T, m M, n int, to time.Duration) chan *results {
 			case err := <-m.Errors():
 				ress.errs = append(ress.errs, err)
 				break L
-			case <-time.After(to):
+			case <-time.After(Timeout):
 				ress.errs = append(ress.errs, errEventTimeout)
 				break L
 			}
@@ -117,6 +171,16 @@ func assertNthDirEvent(t *testing.T, evs []DirEvent, n int, dir string) {
 		t.Fatalf("Expected something to have happend in '%s', instead event nr %d was about %s", dir, n, ev.Dir())
 	}
 
+}
+
+func assertTimeout(t *testing.T, errs []error) {
+	if len(errs) != 1 {
+		t.Fatalf("Expected 1 error (timeout), received: %d", len(errs))
+	}
+
+	if errs[0] != errEventTimeout {
+		t.Fatalf("Expected only a timeout error, instead got: %s", errs[0])
+	}
 }
 
 func assertNoErrors(t *testing.T, errs []error) {
