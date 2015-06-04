@@ -66,7 +66,6 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 		var ov *syscall.Overlapped
 
 		for {
-
 			err := syscall.GetQueuedCompletionStatus(cph, &n, &key, &ov, syscall.INFINITE)
 			switch err {
 			case syscall.ERROR_MORE_DATA:
@@ -103,11 +102,11 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 				raw := (*syscall.FileNotifyInformation)(unsafe.Pointer(&buffer[offset]))
 				buf := (*[syscall.MAX_PATH]uint16)(unsafe.Pointer(&raw.FileName))
 				name := syscall.UTF16ToString(buf[:raw.FileNameLength/2])
+				fmt.Println(name, raw.Action == syscall.FILE_ACTION_MODIFIED)
 				fullname := m.Dir() + "\\" + name
 				dirName := filepath.Dir(fullname)
 
 				clean := filepath.Clean(dirName)
-				fmt.Println(fullname, clean)
 
 				///////
 
@@ -115,6 +114,7 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 				if err != nil {
 					m.errors <- err
 				} else if res {
+					fmt.Println("EVENT FOR:", clean)
 					m.events <- &mevent{clean}
 				}
 
@@ -129,6 +129,20 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 					m.errors <- errors.New("Windows system assumed buffer larger than it is, events have likely been missed.")
 					break
 				}
+			}
+
+			if n != 0 {
+				//reissue readdir changes
+				syscall.ReadDirectoryChanges(
+					h,
+					&buffer[0],
+					uint32(unsafe.Sizeof(buffer)),
+					true,
+					syscall.FILE_NOTIFY_CHANGE_LAST_ACCESS|syscall.FILE_NOTIFY_CHANGE_SIZE|syscall.FILE_NOTIFY_CHANGE_ATTRIBUTES|syscall.FILE_NOTIFY_CHANGE_LAST_WRITE|syscall.FILE_NOTIFY_CHANGE_CREATION|syscall.FILE_NOTIFY_CHANGE_FILE_NAME|syscall.FILE_NOTIFY_CHANGE_DIR_NAME,
+					nil,
+					(*syscall.Overlapped)(unsafe.Pointer(overlapped)),
+					0,
+				)
 			}
 
 		}

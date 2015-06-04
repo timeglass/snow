@@ -25,6 +25,19 @@ func TestRootFileCreation(t *testing.T) {
 	assertNthDirEvent(t, res.evs, 1, m.Dir())
 }
 
+func TestRootFileCreationTwice(t *testing.T) {
+	m := setupTestDirMonitor(t, Recursive)
+	done := waitForNEvents(t, m, 2)
+
+	doWriteFile(t, m, "#foobar", "file_1.md")
+	doWriteFile(t, m, "#foobar", "file_2.md")
+
+	res := <-done
+	assertNoErrors(t, res.errs)
+	assertNthDirEvent(t, res.evs, 1, m.Dir())
+	assertNthDirEvent(t, res.evs, 2, m.Dir())
+}
+
 func TestRootFileRemoval(t *testing.T) {
 	m := setupTestDirMonitor(t, Recursive)
 	done := waitForNEvents(t, m, 1)
