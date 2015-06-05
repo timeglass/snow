@@ -76,6 +76,20 @@ func TestRootFileEdit(t *testing.T) {
 	assertNthDirEvent(t, res.evs, 1, m.Dir())
 }
 
+func TestRootFileEditTwiceWithSameContent(t *testing.T) {
+	m := setupTestDirMonitor(t, Recursive)
+	done := waitForNEvents(t, m, 2)
+
+	doWriteFile(t, m, "#foobar", "existing_file_1.md")
+	doSettle()
+	doWriteFile(t, m, "#foobar", "existing_file_1.md")
+
+	res := <-done
+	assertNoErrors(t, res.errs)
+	assertNthDirEvent(t, res.evs, 1, m.Dir())
+	assertNthDirEvent(t, res.evs, 2, m.Dir())
+}
+
 func TestRootFileMove(t *testing.T) {
 	m := setupTestDirMonitor(t, Recursive)
 	done := waitForNEvents(t, m, 1)
@@ -173,3 +187,4 @@ func TestSubFolderCreationRecursive(t *testing.T) {
 }
 
 //@todo test move between folders
+//@todo test write without changing filesize
