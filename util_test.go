@@ -114,7 +114,7 @@ func doCreateFolders(t *testing.T, m M, name ...string) string {
 	return path
 }
 
-func waitForNEvents(t *testing.T, m M, n int) chan *results {
+func waitForNEvents(t *testing.T, m M, min, max int) chan *results {
 	done := make(chan *results)
 	ress := &results{
 		errs: []error{},
@@ -127,7 +127,7 @@ func waitForNEvents(t *testing.T, m M, n int) chan *results {
 			select {
 			case ev := <-m.Events():
 				ress.evs = append(ress.evs, ev)
-				if len(ress.evs) >= n {
+				if len(ress.evs) >= max {
 					break L
 				}
 
@@ -135,7 +135,9 @@ func waitForNEvents(t *testing.T, m M, n int) chan *results {
 				ress.errs = append(ress.errs, err)
 				break L
 			case <-time.After(Timeout):
-				ress.errs = append(ress.errs, errEventTimeout)
+				if len(ress.evs) < min {
+					ress.errs = append(ress.errs, errEventTimeout)
+				}
 				break L
 			}
 		}
@@ -149,6 +151,29 @@ func waitForNEvents(t *testing.T, m M, n int) chan *results {
 	}
 
 	return done
+}
+
+func assertAtLeast(t *testing.T, evs []DirEvent, n int, dir string) {
+	fi1, err := os.Stat(dir)
+	if err != nil {
+		t.Fatalf("Couldn't stat '%s' for comparision", dir)
+	}
+
+	count := 0
+	for _, ev := range evs {
+		fi2, err := os.Stat(ev.Dir())
+		if err != nil {
+			t.Fatalf("Couldn't stat from event '%s' for comparison", ev.Dir())
+		}
+
+		if os.SameFile(fi1, fi2) {
+			count++
+		}
+	}
+
+	if count != n {
+		t.Fatalf("Expected %d events for '%s', received: %d", n, dir, count)
+	}
 }
 
 func assertNthDirEvent(t *testing.T, evs []DirEvent, n int, dir string) {
@@ -165,7 +190,7 @@ func assertNthDirEvent(t *testing.T, evs []DirEvent, n int, dir string) {
 
 	fi2, err := os.Stat(ev.Dir())
 	if err != nil {
-		t.Fatalf("Couldn't stat from event '%s' for comparision", ev.Dir())
+		t.Fatalf("Couldn't stat from event '%s' for comparison", ev.Dir())
 	}
 
 	if !os.SameFile(fi1, fi2) {

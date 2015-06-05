@@ -161,8 +161,6 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 				nbytes := (*[syscall.PathMax]byte)(unsafe.Pointer(&buf[offset+syscall.SizeofInotifyEvent]))
 				name := strings.TrimRight(string(nbytes[0:raw.Len]), "\000")
 
-				fmt.Println(name)
-
 				m.Lock()
 				path := m.paths[int(raw.Wd)]
 				m.Unlock()
