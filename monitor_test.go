@@ -8,8 +8,8 @@ import (
 
 func init() {
 	Latency = time.Millisecond * 1     //how long to wait after an event occurs before forwarding it
-	SettleTime = time.Millisecond * 10 //file system sometimes needs time to settle
-	Timeout = time.Millisecond * 100   //how long to wait for the expected nr of events to come in
+	SettleTime = time.Millisecond * 10 //when the fs is asked to stettle, settle by the much on top of the latency
+	Timeout = time.Millisecond * 20    //how long to wait for the expected nr of events to come in
 }
 
 //do simple stuff in root
