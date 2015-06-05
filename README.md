@@ -38,5 +38,10 @@ In practice, this actually makes sense. It often up to the implementation to det
 - when files are moved outside the monitored directory, should those be considered as removals?
 - what about atomic saves that some IDE's use, are those truly two events or do you want to handle them as a file modification?
 
+Such an abstraction also makes the implementation significantly simpler and allows us to clearly state the guarantees this library offers:
+
+ - It any number of changes inside a directory guarantees _at least_ one event per directory and _at most_ one per latency period (see interface below)?
+ - .... minimum latency?
+
 ## The interface
 <wip>
