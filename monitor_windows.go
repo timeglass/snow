@@ -3,7 +3,6 @@
 package watch
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,7 +11,11 @@ import (
 	"unsafe"
 )
 
+const bufferSize = 4096
+
 type Monitor struct {
+	latency     time.Duration
+	unthrottled chan DirEvent
 	*monitor
 }
 
@@ -22,14 +25,46 @@ func NewMonitor(dir string, sel Selector, latency time.Duration) (*Monitor, erro
 		return nil, err
 	}
 
-	return &Monitor{
-		monitor: mon,
-	}, nil
+	m := &Monitor{
+		unthrottled: make(chan DirEvent),
+		latency:     latency,
+		monitor:     mon,
+	}
+
+	go m.throttle()
+	return m, nil
+}
+
+func (m *Monitor) throttle() {
+	throttles := map[string]time.Time{}
+	for ev := range m.unthrottled {
+		if until, ok := throttles[ev.Dir()]; ok {
+			if until.Sub(time.Now()) > 0 {
+				continue
+			}
+		}
+
+		m.events <- ev
+		throttles[ev.Dir()] = time.Now().Add(m.latency)
+	}
+}
+
+func (m *Monitor) readDirChanges(h syscall.Handle, pBuff *byte, ov *syscall.Overlapped) error {
+	return syscall.ReadDirectoryChanges(
+		h,
+		pBuff,
+		uint32(bufferSize),
+		true,
+		syscall.FILE_NOTIFY_CHANGE_SIZE|syscall.FILE_NOTIFY_CHANGE_FILE_NAME|syscall.FILE_NOTIFY_CHANGE_DIR_NAME,
+		nil,
+		(*syscall.Overlapped)(unsafe.Pointer(ov)),
+		0,
+	)
 }
 
 func (m *Monitor) Start() (chan DirEvent, error) {
 	overlapped := &syscall.Overlapped{}
-	var buffer [4096]byte
+	var buffer [bufferSize]byte
 
 	pdir, err := syscall.UTF16PtrFromString(m.Dir())
 	if err != nil {
@@ -70,11 +105,8 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 			switch err {
 			case syscall.ERROR_MORE_DATA:
 				if ov == nil {
-					m.errors <- errors.New("ERROR_MORE_DATA has unexpectedly null lpOverlapped buffer")
+					m.errors <- fmt.Errorf("ERROR_MORE_DATA has unexpectedly null lpOverlapped buffer")
 				} else {
-					// The i/o succeeded but the buffer is full.
-					// In theory we should be building up a full packet.
-					// In practice we can get away with just carrying on.
 					n = uint32(unsafe.Sizeof(buffer))
 				}
 			case syscall.ERROR_ACCESS_DENIED:
@@ -84,7 +116,6 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 				// w.startRead(watch)
 				continue
 			case syscall.ERROR_OPERATION_ABORTED:
-				// CancelIo was called on this handle
 				continue
 			default:
 				m.errors <- os.NewSyscallError("GetQueuedCompletionPort", err)
@@ -95,30 +126,24 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 			var offset uint32
 			for {
 				if n == 0 {
-					m.errors <- errors.New("short read in readEvents()")
+					m.errors <- fmt.Errorf("short read in readEvents()")
 					break
 				}
 
 				raw := (*syscall.FileNotifyInformation)(unsafe.Pointer(&buffer[offset]))
 				buf := (*[syscall.MAX_PATH]uint16)(unsafe.Pointer(&raw.FileName))
 				name := syscall.UTF16ToString(buf[:raw.FileNameLength/2])
-				fmt.Println(name, raw.Action == syscall.FILE_ACTION_MODIFIED)
 				fullname := m.Dir() + "\\" + name
 				dirName := filepath.Dir(fullname)
 
 				clean := filepath.Clean(dirName)
 
-				///////
-
 				res, err := m.IsSelected(clean)
 				if err != nil {
 					m.errors <- err
 				} else if res {
-					fmt.Println("EVENT FOR:", clean)
-					m.events <- &mevent{clean}
+					m.unthrottled <- &mevent{clean}
 				}
-
-				/////
 
 				if raw.NextEntryOffset == 0 {
 					break
@@ -126,39 +151,21 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 
 				offset += raw.NextEntryOffset
 				if offset >= n {
-					m.errors <- errors.New("Windows system assumed buffer larger than it is, events have likely been missed.")
+					m.errors <- fmt.Errorf("Windows system assumed buffer larger than it is, events have likely been missed.")
 					break
 				}
 			}
 
 			if n != 0 {
-				//reissue readdir changes
-				syscall.ReadDirectoryChanges(
-					h,
-					&buffer[0],
-					uint32(unsafe.Sizeof(buffer)),
-					true,
-					syscall.FILE_NOTIFY_CHANGE_LAST_ACCESS|syscall.FILE_NOTIFY_CHANGE_SIZE|syscall.FILE_NOTIFY_CHANGE_ATTRIBUTES|syscall.FILE_NOTIFY_CHANGE_LAST_WRITE|syscall.FILE_NOTIFY_CHANGE_CREATION|syscall.FILE_NOTIFY_CHANGE_FILE_NAME|syscall.FILE_NOTIFY_CHANGE_DIR_NAME,
-					nil,
-					(*syscall.Overlapped)(unsafe.Pointer(overlapped)),
-					0,
-				)
+				err = m.readDirChanges(h, &buffer[0], overlapped)
+				if err != nil {
+					m.errors <- os.NewSyscallError("readDirChanges", err)
+				}
 			}
-
 		}
 	}()
 
-	err = syscall.ReadDirectoryChanges(
-		h,
-		&buffer[0],
-		uint32(unsafe.Sizeof(buffer)),
-		true,
-		syscall.FILE_NOTIFY_CHANGE_LAST_ACCESS|syscall.FILE_NOTIFY_CHANGE_SIZE|syscall.FILE_NOTIFY_CHANGE_ATTRIBUTES|syscall.FILE_NOTIFY_CHANGE_LAST_WRITE|syscall.FILE_NOTIFY_CHANGE_CREATION|syscall.FILE_NOTIFY_CHANGE_FILE_NAME|syscall.FILE_NOTIFY_CHANGE_DIR_NAME,
-		nil,
-		(*syscall.Overlapped)(unsafe.Pointer(overlapped)),
-		0,
-	)
-
+	err = m.readDirChanges(h, &buffer[0], overlapped)
 	if err != nil {
 		return nil, os.NewSyscallError("ReadDirectoryChanges", err)
 	}

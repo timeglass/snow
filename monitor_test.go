@@ -9,7 +9,7 @@ import (
 func init() {
 	Latency = time.Millisecond * 1     //how long to wait after an event occurs before forwarding it
 	SettleTime = time.Millisecond * 10 //when the fs is asked to stettle, settle by the much on top of the latency
-	Timeout = time.Millisecond * 20    //how long to wait for the expected nr of events to come in
+	Timeout = time.Millisecond * 50    //how long to wait for the expected nr of events to come in
 }
 
 //do simple stuff in root
@@ -100,14 +100,14 @@ func TestRootFolderCreation(t *testing.T) {
 
 // do stuff in sub folders
 
-func TestSubFolderCreateFileInExisting(t *testing.T) {
+func TestSubFolderCreateFileInExistingMaxEvents(t *testing.T) {
 	m := setupTestDirMonitor(t, Recursive)
-	done := waitForNEvents(t, m, 1)
+	done := waitForNEvents(t, m, 2)
 
 	doWriteFile(t, m, "#foobar", "existing_dir", "new_file_1.md")
 
 	res := <-done
-	assertNoErrors(t, res.errs)
+	assertTimeout(t, res.errs)
 	assertNthDirEvent(t, res.evs, 1, filepath.Join(m.Dir(), "existing_dir"))
 }
 
