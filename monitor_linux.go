@@ -15,17 +15,15 @@ import (
 )
 
 type Monitor struct {
-	ifd         int
-	pipefd      []int
-	paths       map[int]string
-	unthrottled chan DirEvent
-	latency     time.Duration
+	ifd    int
+	pipefd []int
+	paths  map[int]string
 	*monitor
 	sync.Mutex
 }
 
 func NewMonitor(dir string, sel Selector, latency time.Duration) (*Monitor, error) {
-	mon, err := newMonitor(dir, sel)
+	mon, err := newMonitor(dir, sel, latency)
 	if err != nil {
 		return nil, err
 	}
@@ -36,29 +34,13 @@ func NewMonitor(dir string, sel Selector, latency time.Duration) (*Monitor, erro
 	}
 
 	m := &Monitor{
-		paths:       map[int]string{},
-		ifd:         ifd,
-		unthrottled: make(chan DirEvent),
-		latency:     latency,
-		monitor:     mon,
+		paths:   map[int]string{},
+		ifd:     ifd,
+		monitor: mon,
 	}
 
 	go m.throttle()
 	return m, nil
-}
-
-func (m *Monitor) throttle() {
-	throttles := map[string]time.Time{}
-	for ev := range m.unthrottled {
-		if until, ok := throttles[ev.Dir()]; ok {
-			if until.Sub(time.Now()) > 0 {
-				continue
-			}
-		}
-
-		m.events <- ev
-		throttles[ev.Dir()] = time.Now().Add(m.latency)
-	}
 }
 
 func (m *Monitor) addWatch(dir string) error {

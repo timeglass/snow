@@ -14,39 +14,21 @@ import (
 const bufferSize = 4096
 
 type Monitor struct {
-	latency     time.Duration
-	unthrottled chan DirEvent
 	*monitor
 }
 
 func NewMonitor(dir string, sel Selector, latency time.Duration) (*Monitor, error) {
-	mon, err := newMonitor(dir, sel)
+	mon, err := newMonitor(dir, sel, latency)
 	if err != nil {
 		return nil, err
 	}
 
 	m := &Monitor{
-		unthrottled: make(chan DirEvent),
-		latency:     latency,
-		monitor:     mon,
+		monitor: mon,
 	}
 
 	go m.throttle()
 	return m, nil
-}
-
-func (m *Monitor) throttle() {
-	throttles := map[string]time.Time{}
-	for ev := range m.unthrottled {
-		if until, ok := throttles[ev.Dir()]; ok {
-			if until.Sub(time.Now()) > 0 {
-				continue
-			}
-		}
-
-		m.events <- ev
-		throttles[ev.Dir()] = time.Now().Add(m.latency)
-	}
 }
 
 func (m *Monitor) readDirChanges(h syscall.Handle, pBuff *byte, ov *syscall.Overlapped) error {

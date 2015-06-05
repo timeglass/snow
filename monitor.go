@@ -3,6 +3,7 @@ package watch
 import (
 	"fmt"
 	"path/filepath"
+	"time"
 )
 
 var Recursive Selector = func(root, path string) (bool, error) { return true, nil }
@@ -22,25 +23,43 @@ type mevent struct {
 func (m *mevent) Dir() string { return m.dir }
 
 //abstract monitor
-func newMonitor(dir string, sel Selector) (*monitor, error) {
+type monitor struct {
+	latency     time.Duration
+	sel         Selector
+	dir         string
+	unthrottled chan DirEvent
+	events      chan DirEvent
+	errors      chan error
+}
+
+func newMonitor(dir string, sel Selector, latency time.Duration) (*monitor, error) {
 	rdir, err := filepath.EvalSymlinks(dir)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to eval symlink for '%s': %s", dir, rdir)
 	}
 
 	return &monitor{
-		sel:    sel,
-		dir:    rdir,
-		events: make(chan DirEvent),
-		errors: make(chan error),
+		latency:     latency,
+		sel:         sel,
+		dir:         rdir,
+		unthrottled: make(chan DirEvent),
+		events:      make(chan DirEvent),
+		errors:      make(chan error),
 	}, nil
 }
 
-type monitor struct {
-	sel    Selector
-	dir    string
-	events chan DirEvent
-	errors chan error
+func (m *monitor) throttle() {
+	throttles := map[string]time.Time{}
+	for ev := range m.unthrottled {
+		if until, ok := throttles[ev.Dir()]; ok {
+			if until.Sub(time.Now()) > 0 {
+				continue
+			}
+		}
+
+		m.events <- ev
+		throttles[ev.Dir()] = time.Now().Add(m.latency)
+	}
 }
 
 func (m *monitor) IsSelected(path string) (bool, error) {

@@ -14,7 +14,7 @@ type Monitor struct {
 }
 
 func NewMonitor(dir string, sel Selector, latency time.Duration) (*Monitor, error) {
-	mon, err := newMonitor(dir, sel)
+	mon, err := newMonitor(dir, sel, latency)
 	if err != nil {
 		return nil, err
 	}
@@ -25,10 +25,13 @@ func NewMonitor(dir string, sel Selector, latency time.Duration) (*Monitor, erro
 		Flags:   fsevents.WatchRoot | fsevents.NoDefer,
 	}
 
-	return &Monitor{
+	m := &Monitor{
 		es:      es,
 		monitor: mon,
-	}, nil
+	}
+
+	go m.throttle()
+	return m, nil
 }
 
 func (m *Monitor) Start() (chan DirEvent, error) {
@@ -45,7 +48,7 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 				//for fsevent, only emit
 				//events that match selector
 				if res {
-					m.events <- &mevent{ev.Path}
+					m.unthrottled <- &mevent{ev.Path}
 				}
 			}
 		}
