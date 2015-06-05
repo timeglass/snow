@@ -7,9 +7,9 @@ import (
 )
 
 func init() {
-	Latency = time.Millisecond * 80    //how long to wait after an event occurs before forwarding it
+	Latency = time.Millisecond * 1     //how long to wait after an event occurs before forwarding it
 	SettleTime = time.Millisecond * 10 //file system sometimes needs time to settle
-	Timeout = time.Millisecond * 1000  //how long to wait for the expected nr of events to come in
+	Timeout = time.Millisecond * 100   //how long to wait for the expected nr of events to come in
 }
 
 //do simple stuff in root
@@ -25,11 +25,27 @@ func TestRootFileCreation(t *testing.T) {
 	assertNthDirEvent(t, res.evs, 1, m.Dir())
 }
 
+// expectation: WHEN two files written rapidly inside
+// the same directory THEN only one event is send due to
+// the latency behaviour
 func TestRootFileCreationTwice(t *testing.T) {
 	m := setupTestDirMonitor(t, Recursive)
 	done := waitForNEvents(t, m, 2)
 
 	doWriteFile(t, m, "#foobar", "file_1.md")
+	doWriteFile(t, m, "#foobar", "file_2.md")
+
+	res := <-done
+	assertTimeout(t, res.errs)
+	assertNthDirEvent(t, res.evs, 1, m.Dir())
+}
+
+func TestRootFileCreationTwiceWithSettle(t *testing.T) {
+	m := setupTestDirMonitor(t, Recursive)
+	done := waitForNEvents(t, m, 2)
+
+	doWriteFile(t, m, "#foobar", "file_1.md")
+	doSettle()
 	doWriteFile(t, m, "#foobar", "file_2.md")
 
 	res := <-done

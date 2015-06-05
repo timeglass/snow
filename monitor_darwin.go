@@ -22,7 +22,7 @@ func NewMonitor(dir string, sel Selector, latency time.Duration) (*Monitor, erro
 	es := &fsevents.EventStream{
 		Latency: latency,
 		Paths:   []string{mon.Dir()},
-		Flags:   fsevents.WatchRoot,
+		Flags:   fsevents.WatchRoot | fsevents.NoDefer,
 	}
 
 	return &Monitor{
@@ -33,7 +33,6 @@ func NewMonitor(dir string, sel Selector, latency time.Duration) (*Monitor, erro
 
 func (m *Monitor) Start() (chan DirEvent, error) {
 	m.es.Start()
-
 	go func() {
 		for msg := range m.es.Events {
 			for _, ev := range msg {

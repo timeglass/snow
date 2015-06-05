@@ -15,9 +15,11 @@ import (
 )
 
 type Monitor struct {
-	ifd    int
-	pipefd []int
-	paths  map[int]string
+	ifd         int
+	pipefd      []int
+	paths       map[int]string
+	unthrottled chan DirEvent
+	latency     time.Duration
 	*monitor
 	sync.Mutex
 }
@@ -34,12 +36,29 @@ func NewMonitor(dir string, sel Selector, latency time.Duration) (*Monitor, erro
 	}
 
 	m := &Monitor{
-		paths:   map[int]string{},
-		ifd:     ifd,
-		monitor: mon,
+		paths:       map[int]string{},
+		ifd:         ifd,
+		unthrottled: make(chan DirEvent),
+		latency:     latency,
+		monitor:     mon,
 	}
 
+	go m.throttle()
 	return m, nil
+}
+
+func (m *Monitor) throttle() {
+	throttles := map[string]time.Time{}
+	for ev := range m.unthrottled {
+		if until, ok := throttles[ev.Dir()]; ok {
+			if until.Sub(time.Now()) > 0 {
+				continue
+			}
+		}
+
+		m.events <- ev
+		throttles[ev.Dir()] = time.Now().Add(m.latency)
+	}
 }
 
 func (m *Monitor) addWatch(dir string) error {
@@ -88,7 +107,7 @@ func (m *Monitor) handleDirCreation(dir string) error {
 		if fi.IsDir() {
 			fis, _ := ioutil.ReadDir(path)
 			if len(fis) > 0 {
-				m.events <- &mevent{path}
+				m.unthrottled <- &mevent{path}
 			}
 
 			err := m.addWatch(path)
@@ -107,7 +126,7 @@ func (m *Monitor) handleDirCreation(dir string) error {
 	//fake event for newly created directory
 	fis, _ := ioutil.ReadDir(dir)
 	if len(fis) > 0 {
-		m.events <- &mevent{dir}
+		m.unthrottled <- &mevent{dir}
 	}
 
 	//add the newly created dir itself
@@ -158,7 +177,7 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 				m.Unlock()
 				clean := filepath.Clean(path)
 
-				m.events <- &mevent{clean}
+				m.unthrottled <- &mevent{clean}
 
 				//something happend to a dir (created, deleted etc)
 				//handle these cases consistently

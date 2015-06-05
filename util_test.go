@@ -39,8 +39,7 @@ func setupTestDir(t *testing.T) string {
 		t.Fatalf("Failed to create existing test dirs: '%s'", err)
 	}
 
-	<-time.After(SettleTime)
-
+	doSettle()
 	return tdir
 }
 
@@ -56,7 +55,7 @@ func setupTestDirMonitor(t *testing.T, sel Selector) M {
 }
 
 func doSettle() {
-	<-time.After(Latency + (time.Millisecond * 80))
+	<-time.After(Latency + SettleTime)
 }
 
 func doMove(t *testing.T, m M, parts ...string) {
