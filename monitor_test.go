@@ -1,13 +1,14 @@
 package watch
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
 )
 
 func init() {
-	Latency = time.Millisecond * 1     //how long to wait after an event occurs before forwarding it
+	Latency = time.Millisecond * 3     //how long to wait after an event occurs before forwarding it
 	SettleTime = time.Millisecond * 10 //when the fs is asked to stettle, settle by the much on top of the latency
 	Timeout = time.Millisecond * 50    //how long to wait for the expected nr of events to come in
 }
@@ -81,8 +82,15 @@ func TestRootFileEditTwiceWithSameContent(t *testing.T) {
 	done := waitForNEvents(t, m, 2)
 
 	doWriteFile(t, m, "#foobar", "existing_file_1.md")
+	fiA, _ := os.Stat(filepath.Join(m.Dir(), "existing_file_1.md"))
 	doSettle()
+
 	doWriteFile(t, m, "#foobar", "existing_file_1.md")
+	fiB, _ := os.Stat(filepath.Join(m.Dir(), "existing_file_1.md"))
+
+	if fiA.Size() != fiB.Size() {
+		t.Fatalf("Expected sizes of test file to be the same")
+	}
 
 	res := <-done
 	assertNoErrors(t, res.errs)
