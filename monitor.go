@@ -51,16 +51,16 @@ func newMonitor(dir string, sel Selector, latency time.Duration) (*monitor, erro
 func (m *monitor) throttle() {
 	throttles := map[string]time.Time{}
 	for ev := range m.unthrottled {
-		fmt.Println("\nIN", ev.Dir())
+		// fmt.Println("\nIN", ev.Dir())
 		if until, ok := throttles[ev.Dir()]; ok {
 			diff := until.Sub(time.Now())
-			fmt.Println("Diff:", diff)
+			// fmt.Println("Diff:", diff)
 			if diff > 0 {
 				continue
 			}
 		}
 
-		fmt.Println("OUT", ev.Dir())
+		// fmt.Println("OUT", ev.Dir())
 		m.events <- ev
 		throttles[ev.Dir()] = time.Now().Add(m.latency)
 	}
