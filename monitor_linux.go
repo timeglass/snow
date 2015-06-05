@@ -87,12 +87,16 @@ func (m *Monitor) handleDirCreation(dir string) error {
 		}
 
 		if fi.IsDir() {
-			fis, _ := ioutil.ReadDir(path)
+			fis, err := ioutil.ReadDir(path)
+			if err != nil {
+				return fmt.Errorf("Failed read dir '%s': %s", path, err)
+			}
+
 			if len(fis) > 0 {
 				m.unthrottled <- &mevent{path}
 			}
 
-			err := m.addWatch(path)
+			err = m.addWatch(path)
 			if err != nil {
 				return fmt.Errorf("Failed to add '%s': %s", path, err)
 			}
@@ -106,7 +110,11 @@ func (m *Monitor) handleDirCreation(dir string) error {
 	}
 
 	//fake event for newly created directory
-	fis, _ := ioutil.ReadDir(dir)
+	fis, err := ioutil.ReadDir(dir)
+	if err != nil {
+		return fmt.Errorf("Failed read dir '%s': %s", dir, err)
+	}
+
 	if len(fis) > 0 {
 		m.unthrottled <- &mevent{dir}
 	}
