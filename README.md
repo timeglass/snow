@@ -1,11 +1,15 @@
-# watch
-There have been several attempts at creating a file system watcher for the Go ecosystem. Below are a few that i've encountered in search for one that satisfied my needs:
+# snow
+The watcher that knows nothing.
 
-- https://github.com/go-fsnotify/fsnotify
-- https://github.com/howeyc/fsnotify
-- https://github.com/jpillora/spy
-- https://github.com/gokyle/fswatch
-- https://github.com/rjeczalik/notify
+
+## Introduction
+There have been several attempts at creating a file system watcher for the Go ecosystem. Below are a few that i've encountered in my search:
+
+- [go-fsnotify/fsnotify](https://github.com/go-fsnotify/fsnotify)
+- [howeyc/fsnotify](https://github.com/howeyc/fsnotify)
+- [jpillora/spy](https://github.com/jpillora/spy)
+- [gokyle/fswatch](https://github.com/gokyle/fswatch)
+- [rjeczalik/notify](https://github.com/rjeczalik/notify)
 - ... and probably a few more
 
 I wanted a library that could live up to the following requirements:
@@ -14,8 +18,7 @@ I wanted a library that could live up to the following requirements:
 - Be able to watch directories with thousands of files in them. As a target, it should work on the Linux source code repository. 
 - The simplest possible abstractions, no pipelines, filters or other shenanigans 
 - Support recursive watching out of the box, but provide some configuration that can prevent some or all subdirectories from being watched.
-- Identical behaviour no matter the underlying system.
-- Identical behaviour of the abstraction across OSX, Windows and Linux.
+- Identical behaviour across OSX, Windows and Linux.
 
 ##The Problem
 Above requirements seem reasonable but are difficult to meet in practice. As [some](https://github.com/howeyc/fsnotify/issues/54) [discussions](http://lists.qt-project.org/pipermail/development/2012-July/005279.html) have pointed out, the root of the issue lies in the following table of the ideal subsystems for each platform:

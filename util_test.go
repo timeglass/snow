@@ -34,7 +34,7 @@ func setupTestDir(t *testing.T) string {
 
 	defer f1.Close()
 
-	err = os.MkdirAll(filepath.Join(tdir, "existing_dir", "existing_sub_dir"), 744)
+	err = os.MkdirAll(filepath.Join(tdir, "existing_dir", "existing_sub_dir"), 0744)
 	if err != nil {
 		t.Fatalf("Failed to create existing test dirs: '%s'", err)
 	}
@@ -95,7 +95,7 @@ func doRemove(t *testing.T, m M, name ...string) {
 func doWriteFile(t *testing.T, m M, data string, name ...string) string {
 	path := filepath.Join(name...)
 	path = filepath.Join(m.Dir(), path)
-	err := ioutil.WriteFile(path, []byte(data), 644)
+	err := ioutil.WriteFile(path, []byte(data), 0644)
 	if err != nil {
 		t.Fatalf("Failed to write file '%s': '%s'", path, err)
 	}

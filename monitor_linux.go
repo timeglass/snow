@@ -4,9 +4,11 @@ package watch
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 	"unsafe"
@@ -14,10 +16,10 @@ import (
 
 type Monitor struct {
 	ifd    int
-	epfd   int
-	epev   []syscall.EpollEvent
 	pipefd []int
+	paths  map[int]string
 	*monitor
+	sync.Mutex
 }
 
 func NewMonitor(dir string, sel Selector, latency time.Duration) (*Monitor, error) {
@@ -32,11 +34,89 @@ func NewMonitor(dir string, sel Selector, latency time.Duration) (*Monitor, erro
 	}
 
 	m := &Monitor{
+		paths:   map[int]string{},
 		ifd:     ifd,
 		monitor: mon,
 	}
 
 	return m, nil
+}
+
+func (m *Monitor) addWatch(dir string) error {
+	res, err := m.IsSelected(dir)
+	if err != nil {
+		return err
+	} else if !res {
+		return nil
+	}
+
+	m.Lock()
+	defer m.Unlock()
+
+	// If the filesystem object was already being watched
+	// (perhaps via a different link to the same object), then the
+	// descriptor for the existing watch is returned
+	// @see http://man7.org/linux/man-pages/man2/inotify_add_watch.2.html
+	wfd, err := syscall.InotifyAddWatch(m.ifd, dir, syscall.IN_CREATE|syscall.IN_DELETE|syscall.IN_MODIFY|syscall.IN_MOVED_FROM|syscall.IN_MOVED_TO)
+	if err != nil {
+		return os.NewSyscallError("InotifyAddWatch", err)
+	}
+
+	m.paths[wfd] = dir
+	return nil
+}
+
+// directory creation under linux requires some fake events
+// at the time of finotify read() some sub files or directories
+// may already be created, as such we walk the new directory recursively
+// and emit "fake" events for any created files or directories and for the latter
+// also add watches
+func (m *Monitor) handleDirCreation(dir string) error {
+	res, err := m.IsSelected(dir)
+	if err != nil {
+		return err
+	} else if !res {
+		return nil
+	}
+
+	//walk subdirectories that could have been created
+	err = filepath.Walk(dir, func(path string, fi os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if fi.IsDir() {
+			fis, _ := ioutil.ReadDir(path)
+			if len(fis) > 0 {
+				m.events <- &mevent{path}
+			}
+
+			err := m.addWatch(path)
+			if err != nil {
+				return fmt.Errorf("Failed to add '%s': %s", path, err)
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+
+	//fake event for newly created directory
+	fis, _ := ioutil.ReadDir(dir)
+	if len(fis) > 0 {
+		m.events <- &mevent{dir}
+	}
+
+	//add the newly created dir itself
+	err = m.addWatch(dir)
+	if err != nil {
+		return fmt.Errorf("Failed to watch directory '%s' that was just created: %s", dir, err)
+	}
+
+	return nil
 }
 
 func (m *Monitor) Start() (chan DirEvent, error) {
@@ -69,35 +149,27 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 			var offset uint32
 			for offset <= uint32(n-syscall.SizeofInotifyEvent) {
 				raw := (*syscall.InotifyEvent)(unsafe.Pointer(&buf[offset]))
+				mask := uint32(raw.Mask)
 				nbytes := (*[syscall.PathMax]byte)(unsafe.Pointer(&buf[offset+syscall.SizeofInotifyEvent]))
 				name := strings.TrimRight(string(nbytes[0:raw.Len]), "\000")
 
-				///
+				m.Lock()
+				path := m.paths[int(raw.Wd)]
+				m.Unlock()
+				clean := filepath.Clean(path)
 
-				fullname := m.Dir() + "/" + name
-				dirName := filepath.Dir(fullname)
-				clean := filepath.Clean(dirName)
-
-				var events string = ""
-				mask := uint32(raw.Mask)
-				for _, b := range eventBits {
-					if mask&b.Value == b.Value {
-						mask &^= b.Value
-						events += "|" + b.Name
-					}
-				}
-
-				if mask != 0 {
-					events += fmt.Sprintf("|%#x", mask)
-				}
-				if len(events) > 0 {
-					events = " == " + events[1:]
-				}
-
-				fmt.Println("EVs:", events, clean)
 				m.events <- &mevent{clean}
 
-				///
+				//something happend to a dir (created, deleted etc)
+				//handle these cases consistently
+				if mask&syscall.IN_ISDIR == syscall.IN_ISDIR {
+					subject := filepath.Clean(filepath.Join(path, name))
+					if mask&syscall.IN_CREATE == syscall.IN_CREATE {
+						m.handleDirCreation(subject)
+					} else {
+						fmt.Println("Dir removal not yet implemented")
+					}
+				}
 
 				offset += syscall.SizeofInotifyEvent + raw.Len
 			}
@@ -106,72 +178,25 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 
 	}()
 
-	_, err := syscall.InotifyAddWatch(m.ifd, m.Dir(), syscall.IN_ALL_EVENTS)
+	//recursive watch
+	err := filepath.Walk(m.dir, func(path string, fi os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if fi.IsDir() {
+			err = m.addWatch(path)
+			if err != nil {
+				return fmt.Errorf("Failed to add '%s': %s", path, err)
+			}
+		}
+
+		return nil
+	})
+
 	if err != nil {
-		return m.Events(), os.NewSyscallError("InotifyAddWatch", err)
+		return m.Events(), err
 	}
 
-	return m.Events(), nil
-}
-
-const (
-	// Options for inotify_init() are not exported
-	// IN_CLOEXEC    uint32 = syscall.IN_CLOEXEC
-	// IN_NONBLOCK   uint32 = syscall.IN_NONBLOCK
-
-	// Options for AddWatch
-	IN_DONT_FOLLOW uint32 = syscall.IN_DONT_FOLLOW
-	IN_ONESHOT     uint32 = syscall.IN_ONESHOT
-	IN_ONLYDIR     uint32 = syscall.IN_ONLYDIR
-
-	// The "IN_MASK_ADD" option is not exported, as AddWatch
-	// adds it automatically, if there is already a watch for the given path
-	// IN_MASK_ADD      uint32 = syscall.IN_MASK_ADD
-
-	// Events
-	IN_ACCESS        uint32 = syscall.IN_ACCESS
-	IN_ALL_EVENTS    uint32 = syscall.IN_ALL_EVENTS
-	IN_ATTRIB        uint32 = syscall.IN_ATTRIB
-	IN_CLOSE         uint32 = syscall.IN_CLOSE
-	IN_CLOSE_NOWRITE uint32 = syscall.IN_CLOSE_NOWRITE
-	IN_CLOSE_WRITE   uint32 = syscall.IN_CLOSE_WRITE
-	IN_CREATE        uint32 = syscall.IN_CREATE
-	IN_DELETE        uint32 = syscall.IN_DELETE
-	IN_DELETE_SELF   uint32 = syscall.IN_DELETE_SELF
-	IN_MODIFY        uint32 = syscall.IN_MODIFY
-	IN_MOVE          uint32 = syscall.IN_MOVE
-	IN_MOVED_FROM    uint32 = syscall.IN_MOVED_FROM
-	IN_MOVED_TO      uint32 = syscall.IN_MOVED_TO
-	IN_MOVE_SELF     uint32 = syscall.IN_MOVE_SELF
-	IN_OPEN          uint32 = syscall.IN_OPEN
-
-	// Special events
-	IN_ISDIR      uint32 = syscall.IN_ISDIR
-	IN_IGNORED    uint32 = syscall.IN_IGNORED
-	IN_Q_OVERFLOW uint32 = syscall.IN_Q_OVERFLOW
-	IN_UNMOUNT    uint32 = syscall.IN_UNMOUNT
-)
-
-var eventBits = []struct {
-	Value uint32
-	Name  string
-}{
-	{IN_ACCESS, "IN_ACCESS"},
-	{IN_ATTRIB, "IN_ATTRIB"},
-	{IN_CLOSE, "IN_CLOSE"},
-	{IN_CLOSE_NOWRITE, "IN_CLOSE_NOWRITE"},
-	{IN_CLOSE_WRITE, "IN_CLOSE_WRITE"},
-	{IN_CREATE, "IN_CREATE"},
-	{IN_DELETE, "IN_DELETE"},
-	{IN_DELETE_SELF, "IN_DELETE_SELF"},
-	{IN_MODIFY, "IN_MODIFY"},
-	{IN_MOVE, "IN_MOVE"},
-	{IN_MOVED_FROM, "IN_MOVED_FROM"},
-	{IN_MOVED_TO, "IN_MOVED_TO"},
-	{IN_MOVE_SELF, "IN_MOVE_SELF"},
-	{IN_OPEN, "IN_OPEN"},
-	{IN_ISDIR, "IN_ISDIR"},
-	{IN_IGNORED, "IN_IGNORED"},
-	{IN_Q_OVERFLOW, "IN_Q_OVERFLOW"},
-	{IN_UNMOUNT, "IN_UNMOUNT"},
+	return m.Events(), m.addWatch(m.Dir())
 }
