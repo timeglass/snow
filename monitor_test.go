@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-	Latency = time.Millisecond * 3     //how long to wait after an event occurs before forwarding it
+	Latency = time.Millisecond * 5     //how long to wait after an event occurs before forwarding it
 	SettleTime = time.Millisecond * 10 //when the fs is asked to stettle, settle by the much on top of the latency
 	Timeout = time.Millisecond * 50    //how long to wait for the expected nr of events to come in
 }

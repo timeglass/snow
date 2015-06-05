@@ -117,7 +117,6 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 				name := syscall.UTF16ToString(buf[:raw.FileNameLength/2])
 				fullname := m.Dir() + "\\" + name
 				dirName := filepath.Dir(fullname)
-
 				clean := filepath.Clean(dirName)
 
 				res, err := m.IsSelected(clean)
