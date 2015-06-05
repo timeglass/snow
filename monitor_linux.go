@@ -129,7 +129,6 @@ func (m *Monitor) handleDirCreation(dir string) error {
 }
 
 func (m *Monitor) Start() (chan DirEvent, error) {
-
 	go func() {
 		var buf [syscall.SizeofInotifyEvent * 4096]byte
 
@@ -162,6 +161,8 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 				nbytes := (*[syscall.PathMax]byte)(unsafe.Pointer(&buf[offset+syscall.SizeofInotifyEvent]))
 				name := strings.TrimRight(string(nbytes[0:raw.Len]), "\000")
 
+				fmt.Println(name)
+
 				m.Lock()
 				path := m.paths[int(raw.Wd)]
 				m.Unlock()
@@ -184,7 +185,6 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 			}
 
 		}
-
 	}()
 
 	//recursive watch

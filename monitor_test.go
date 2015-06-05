@@ -8,9 +8,9 @@ import (
 )
 
 func init() {
-	Latency = time.Millisecond * 5     //how long to wait after an event occurs before forwarding it
-	SettleTime = time.Millisecond * 10 //when the fs is asked to stettle, settle by the much on top of the latency
-	Timeout = time.Millisecond * 50    //how long to wait for the expected nr of events to come in
+	Latency = time.Millisecond * 10    //how long to wait after an event occurs before forwarding it
+	SettleTime = time.Millisecond * 30 //when the fs is asked to stettle, settle by the much on top of the latency
+	Timeout = time.Millisecond * 100   //how long to wait for the expected nr of events to come in
 }
 
 //do simple stuff in root
@@ -122,6 +122,54 @@ func TestRootFolderCreation(t *testing.T) {
 
 // do stuff in sub folders
 
+func TestSubFolderMoveToExistingSettleBefore(t *testing.T) {
+	m := setupTestDirMonitor(t, Recursive)
+	done := waitForNEvents(t, m, 3)
+
+	dir := doCreateFolders(t, m, "folder_1")
+	doSettle()
+	doWriteFile(t, m, "#foobar", "folder_1", "file_1.md")
+	doMove(t, m, "folder_1", "file_1.md", "->", "existing_dir", "file_2.md")
+
+	res := <-done
+	assertNoErrors(t, res.errs)
+	assertNthDirEvent(t, res.evs, 1, m.Dir())
+	assertNthDirEvent(t, res.evs, 2, dir)
+	assertNthDirEvent(t, res.evs, 3, filepath.Join(m.Dir(), "existing_dir"))
+}
+
+func TestSubFolderMoveToExistingSettleAfter(t *testing.T) {
+	m := setupTestDirMonitor(t, Recursive)
+	done := waitForNEvents(t, m, 4)
+
+	dir := doCreateFolders(t, m, "folder_1")
+	doWriteFile(t, m, "#foobar", "folder_1", "file_1.md")
+	doSettle()
+	doMove(t, m, "folder_1", "file_1.md", "->", "existing_dir", "file_2.md")
+
+	res := <-done
+	assertNoErrors(t, res.errs)
+	assertNthDirEvent(t, res.evs, 1, m.Dir())
+	assertNthDirEvent(t, res.evs, 2, dir)
+	assertNthDirEvent(t, res.evs, 3, filepath.Join(m.Dir(), "folder_1"))
+	assertNthDirEvent(t, res.evs, 4, filepath.Join(m.Dir(), "existing_dir"))
+}
+
+func TestSubFolderMoveToExistingNoSettle(t *testing.T) {
+	m := setupTestDirMonitor(t, Recursive)
+	done := waitForNEvents(t, m, 3)
+
+	dir := doCreateFolders(t, m, "folder_1")
+	doWriteFile(t, m, "#foobar", "folder_1", "file_1.md")
+	doMove(t, m, "folder_1", "file_1.md", "->", "existing_dir", "file_2.md")
+
+	res := <-done
+	assertNoErrors(t, res.errs)
+	assertNthDirEvent(t, res.evs, 1, m.Dir())
+	assertNthDirEvent(t, res.evs, 2, dir)
+	assertNthDirEvent(t, res.evs, 3, filepath.Join(m.Dir(), "existing_dir"))
+}
+
 func TestSubFolderCreateFileInExistingMaxEvents(t *testing.T) {
 	m := setupTestDirMonitor(t, Recursive)
 	done := waitForNEvents(t, m, 2)
@@ -195,4 +243,4 @@ func TestSubFolderCreationRecursive(t *testing.T) {
 }
 
 //@todo test move between folders
-//@todo test write without changing filesize
+//@todo test dir removal and watch removal
