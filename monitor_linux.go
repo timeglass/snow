@@ -193,6 +193,10 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 						for fd, path := range m.paths {
 							if path == subject {
 								move.Fd = fd
+								//we remove it here since it might be moved outside
+								//the watchers view, if not the "IN_MOVE_TO" event will
+								//re-insert it into the m.paths
+								delete(m.paths, fd)
 							}
 						}
 						m.Unlock()

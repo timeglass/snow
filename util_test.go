@@ -27,20 +27,20 @@ func setupTestDir(t *testing.T) string {
 		t.Fatalf("Failed to create test directory: %s", err)
 	}
 
-	f1, err := os.Create(filepath.Join(tdir, "existing_file_1.md"))
+	err = os.MkdirAll(filepath.Join(tdir, "workspace", "existing_dir", "existing_sub_dir"), 0744)
+	if err != nil {
+		t.Fatalf("Failed to create existing test dirs: '%s'", err)
+	}
+
+	f1, err := os.Create(filepath.Join(tdir, "workspace", "existing_file_1.md"))
 	if err != nil {
 		t.Fatalf("Failed to create test directory existing file: '%s'", err)
 	}
 
 	defer f1.Close()
 
-	err = os.MkdirAll(filepath.Join(tdir, "existing_dir", "existing_sub_dir"), 0744)
-	if err != nil {
-		t.Fatalf("Failed to create existing test dirs: '%s'", err)
-	}
-
 	doSettle()
-	return tdir
+	return filepath.Join(tdir, "workspace")
 }
 
 func setupTestDirMonitor(t *testing.T, sel Selector) M {
@@ -78,7 +78,7 @@ func doMove(t *testing.T, m M, parts ...string) {
 
 	err := os.Rename(filepath.Join(from...), filepath.Join(to...))
 	if err != nil {
-		t.Fatalf("Failed to rename from '%s' to '%s': '%s'", from, to, err)
+		t.Fatalf("Failed to rename from '%s' to '%s': '%s'", filepath.Join(from...), filepath.Join(to...), err)
 	}
 }
 

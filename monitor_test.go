@@ -75,6 +75,17 @@ func TestRootFolderRemoval(t *testing.T) {
 	assertNthDirEvent(t, res.evs, 2, m.Dir())
 }
 
+func TestRootFolderMoveOutOfWatchedDir(t *testing.T) {
+	m := setupTestDirMonitor(t, Recursive)
+	done := waitForNEvents(t, m, 2, 2)
+
+	doMove(t, m, "existing_dir", "->", "../outside_dir")
+
+	res := <-done
+	assertTimeout(t, res.errs)
+	assertNthDirEvent(t, res.evs, 1, m.Dir())
+}
+
 func TestRootFileEdit(t *testing.T) {
 	m := setupTestDirMonitor(t, Recursive)
 	done := waitForNEvents(t, m, 1, 1)
@@ -297,7 +308,6 @@ func TestSubFolderCreationRecursive(t *testing.T) {
 	assertNthDirEvent(t, res.evs, 3, dir)
 }
 
-// Test_Directory_Delete_WithSubFile
 // Test_StopStartMonitoring
 // move out of directory
 
