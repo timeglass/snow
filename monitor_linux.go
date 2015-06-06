@@ -58,7 +58,7 @@ func (m *Monitor) addWatch(dir string) error {
 	// (perhaps via a different link to the same object), then the
 	// descriptor for the existing watch is returned
 	// @see http://man7.org/linux/man-pages/man2/inotify_add_watch.2.html
-	wfd, err := syscall.InotifyAddWatch(m.ifd, dir, syscall.IN_CREATE|syscall.IN_DELETE|syscall.IN_MODIFY|syscall.IN_MOVED_FROM|syscall.IN_MOVED_TO)
+	wfd, err := syscall.InotifyAddWatch(m.ifd, dir, syscall.IN_CREATE|syscall.IN_DELETE|syscall.IN_MODIFY|syscall.IN_MOVED_FROM|syscall.IN_MOVED_TO|syscall.IN_ONLYDIR)
 	if err != nil {
 		return os.NewSyscallError("InotifyAddWatch", err)
 	}
@@ -172,7 +172,10 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 				m.Unlock()
 				clean := filepath.Clean(path)
 
-				m.unthrottled <- &mevent{clean}
+				//send all but implicit/explicit watch removal
+				if mask&syscall.IN_IGNORED != syscall.IN_IGNORED {
+					m.unthrottled <- &mevent{clean}
+				}
 
 				//something happend to a dir (created, deleted, moved etc)
 				//handle these cases consistently with other implementations
@@ -211,6 +214,16 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 						} else {
 							m.errors <- fmt.Errorf("move has no Cookie on arrival of IN_MOVE_FROM event")
 						}
+					} else if mask&syscall.IN_DELETE == syscall.IN_DELETE {
+						//dir was removed, remove from paths index
+						//if its indexed
+						m.Lock()
+						for fd, path := range m.paths {
+							if path == subject {
+								delete(m.paths, fd)
+							}
+						}
+						m.Unlock()
 					}
 				}
 

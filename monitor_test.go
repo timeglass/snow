@@ -63,6 +63,17 @@ func TestRootFileRemoval(t *testing.T) {
 	assertNthDirEvent(t, res.evs, 1, m.Dir())
 }
 
+func TestRootFolderRemoval(t *testing.T) {
+	m := setupTestDirMonitor(t, Recursive)
+	done := waitForNEvents(t, m, 1, 5)
+
+	doRemove(t, m, "existing_dir")
+
+	res := <-done
+	assertNoErrors(t, res.errs)
+	assertNthDirEvent(t, res.evs, 1, m.Dir())
+}
+
 func TestRootFileEdit(t *testing.T) {
 	m := setupTestDirMonitor(t, Recursive)
 	done := waitForNEvents(t, m, 1, 1)
@@ -123,6 +134,19 @@ func TestRootFolderMoveExistingFolderSettle(t *testing.T) {
 
 	doMove(t, m, "existing_dir", "->", "existing_folder_2")
 	doSettle()
+	doWriteFile(t, m, "#foobar", "existing_folder_2", "file_1.md")
+
+	res := <-done
+	assertNoErrors(t, res.errs)
+	assertNthDirEvent(t, res.evs, 1, m.Dir())
+	assertNthDirEvent(t, res.evs, 2, filepath.Join(m.Dir(), "existing_folder_2"))
+}
+
+func TestRootFolderMoveExistingFolderNoSettle(t *testing.T) {
+	m := setupTestDirMonitor(t, Recursive)
+	done := waitForNEvents(t, m, 2, 2)
+
+	doMove(t, m, "existing_dir", "->", "existing_folder_2")
 	doWriteFile(t, m, "#foobar", "existing_folder_2", "file_1.md")
 
 	res := <-done
@@ -273,7 +297,7 @@ func TestSubFolderCreationRecursive(t *testing.T) {
 }
 
 // Test_Directory_Delete_WithSubFile
-// Test_Directory_RenameToSameDirectory
 // Test_StopStartMonitoring
+// move out of directory
 
 //@todo test dir removal and watch removal
