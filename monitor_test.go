@@ -26,9 +26,6 @@ func TestRootFileCreation(t *testing.T) {
 	assertNthDirEvent(t, res.evs, 1, m.Dir())
 }
 
-// expectation: WHEN two files written rapidly inside
-// the same directory THEN only one event is send due to
-// the latency behaviour
 func TestRootFileCreationTwice(t *testing.T) {
 	m := setupTestDirMonitor(t, Recursive)
 	done := waitForNEvents(t, m, 2, 2)
@@ -118,6 +115,20 @@ func TestRootFolderCreation(t *testing.T) {
 	res := <-done
 	assertNoErrors(t, res.errs)
 	assertNthDirEvent(t, res.evs, 1, m.Dir())
+}
+
+func TestRootFolderMoveExistingFolderSettle(t *testing.T) {
+	m := setupTestDirMonitor(t, Recursive)
+	done := waitForNEvents(t, m, 2, 2)
+
+	doMove(t, m, "existing_dir", "->", "existing_folder_2")
+	doSettle()
+	doWriteFile(t, m, "#foobar", "existing_folder_2", "file_1.md")
+
+	res := <-done
+	assertNoErrors(t, res.errs)
+	assertNthDirEvent(t, res.evs, 1, m.Dir())
+	assertNthDirEvent(t, res.evs, 2, filepath.Join(m.Dir(), "existing_folder_2"))
 }
 
 // do stuff in sub folders
@@ -260,5 +271,9 @@ func TestSubFolderCreationRecursive(t *testing.T) {
 	assertNthDirEvent(t, res.evs, 2, filepath.Join(m.Dir(), "folder_1"))
 	assertNthDirEvent(t, res.evs, 3, dir)
 }
+
+// Test_Directory_Delete_WithSubFile
+// Test_Directory_RenameToSameDirectory
+// Test_StopStartMonitoring
 
 //@todo test dir removal and watch removal

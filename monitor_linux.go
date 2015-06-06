@@ -131,6 +131,12 @@ func (m *Monitor) handleDirCreation(dir string) error {
 func (m *Monitor) Start() (chan DirEvent, error) {
 	go func() {
 		var buf [syscall.SizeofInotifyEvent * 4096]byte
+		var move struct {
+			ID   uint32
+			Fd   int
+			From string
+			To   string
+		}
 
 		for {
 			n, err := syscall.Read(m.ifd, buf[:])
@@ -168,14 +174,43 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 
 				m.unthrottled <- &mevent{clean}
 
-				//something happend to a dir (created, deleted etc)
-				//handle these cases consistently
+				//something happend to a dir (created, deleted, moved etc)
+				//handle these cases consistently with other implementations
+				//to mimic recursive behaviour
 				if mask&syscall.IN_ISDIR == syscall.IN_ISDIR {
 					subject := filepath.Clean(filepath.Join(path, name))
 					if mask&syscall.IN_CREATE == syscall.IN_CREATE {
 						m.handleDirCreation(subject)
-					} else {
-						fmt.Println("Dir removal not yet implemented")
+					} else if mask&syscall.IN_MOVED_FROM == syscall.IN_MOVED_FROM {
+						move.ID = uint32(raw.Cookie)
+						move.From = subject
+
+						//attempt to fetch fd for directory that is about to be moved
+						m.Lock()
+						for fd, path := range m.paths {
+							if path == subject {
+								move.Fd = fd
+							}
+						}
+						m.Unlock()
+
+					} else if mask&syscall.IN_MOVED_TO == syscall.IN_MOVED_TO {
+						if move.ID != 0 {
+							if move.ID == raw.Cookie {
+								move.To = subject
+								if move.Fd != 0 {
+									//it is associated with a fd in our path index, modify it
+									//to complete the move for further events
+									m.Lock()
+									m.paths[move.Fd] = subject
+									m.Unlock()
+								}
+							} else {
+								m.errors <- fmt.Errorf("move didn't have a matching Cookie on arrival of IN_MOVE_FROM event")
+							}
+						} else {
+							m.errors <- fmt.Errorf("move has no Cookie on arrival of IN_MOVE_FROM event")
+						}
 					}
 				}
 
