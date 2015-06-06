@@ -28,18 +28,11 @@ func NewMonitor(dir string, sel Selector, latency time.Duration) (*Monitor, erro
 		return nil, err
 	}
 
-	ifd, err := syscall.InotifyInit()
-	if err != nil {
-		return nil, os.NewSyscallError("InotifyInit", err)
-	}
-
 	m := &Monitor{
 		paths:   map[int]string{},
-		ifd:     ifd,
 		monitor: mon,
 	}
 
-	go m.throttle()
 	return m, nil
 }
 
@@ -144,7 +137,31 @@ func (m *Monitor) CanEmit(path string) bool {
 	return false
 }
 
+func (m *Monitor) Stop() error {
+	m.monitor.Stop()
+	err := syscall.Close(m.ifd)
+	if err != nil {
+		return os.NewSyscallError("Close", err)
+	}
+
+	for fd, _ := range m.paths {
+		delete(m.paths, fd)
+	}
+
+	return nil
+}
+
 func (m *Monitor) Start() (chan DirEvent, error) {
+	err := m.monitor.Start()
+	if err != nil {
+		return m.Events(), nil
+	}
+
+	m.ifd, err = syscall.InotifyInit()
+	if err != nil {
+		return nil, os.NewSyscallError("InotifyInit", err)
+	}
+
 	go func() {
 		var buf [syscall.SizeofInotifyEvent * 4096]byte
 		var move struct {
@@ -155,10 +172,13 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 		}
 
 		for {
+			if m.stopped {
+				return
+			}
+
 			n, err := syscall.Read(m.ifd, buf[:])
-			if err != nil {
-				m.errors <- os.NewSyscallError("Read", err)
-				continue
+			if m.stopped {
+				return
 			}
 
 			if n == 0 {
@@ -249,12 +269,11 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 
 				offset += syscall.SizeofInotifyEvent + raw.Len
 			}
-
 		}
 	}()
 
 	//recursive watch
-	err := filepath.Walk(m.dir, func(path string, fi os.FileInfo, err error) error {
+	err = filepath.Walk(m.dir, func(path string, fi os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}

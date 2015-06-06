@@ -32,6 +32,7 @@ func (m *mevent) Dir() string { return m.dir }
 
 //abstract monitor
 type monitor struct {
+	stopped     bool
 	latency     time.Duration
 	sel         Selector
 	dir         string
@@ -86,6 +87,17 @@ func (m *monitor) Events() chan DirEvent {
 
 func (m *monitor) Errors() chan error {
 	return m.errors
+}
+
+func (m *monitor) Start() error {
+	m.stopped = false
+	go m.throttle()
+	return nil
+}
+
+func (m *monitor) Stop() error {
+	m.stopped = true
+	return nil
 }
 
 func (m *monitor) Dir() string {

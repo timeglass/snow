@@ -18,6 +18,7 @@ func init() {
 func TestRootFileCreation(t *testing.T) {
 	m := setupTestDirMonitor(t, Recursive)
 	done := waitForNEvents(t, m, 1, 1)
+	m.Start()
 
 	doWriteFile(t, m, "#foobar", "file_1.md")
 
@@ -29,6 +30,7 @@ func TestRootFileCreation(t *testing.T) {
 func TestRootFileCreationTwice(t *testing.T) {
 	m := setupTestDirMonitor(t, Recursive)
 	done := waitForNEvents(t, m, 2, 2)
+	m.Start()
 
 	doWriteFile(t, m, "#foobar", "file_1.md")
 	doWriteFile(t, m, "#foobar", "file_2.md")
@@ -41,6 +43,7 @@ func TestRootFileCreationTwice(t *testing.T) {
 func TestRootFileCreationTwiceWithSettle(t *testing.T) {
 	m := setupTestDirMonitor(t, Recursive)
 	done := waitForNEvents(t, m, 2, 2)
+	m.Start()
 
 	doWriteFile(t, m, "#foobar", "file_1.md")
 	doSettle()
@@ -55,6 +58,7 @@ func TestRootFileCreationTwiceWithSettle(t *testing.T) {
 func TestRootFileRemoval(t *testing.T) {
 	m := setupTestDirMonitor(t, Recursive)
 	done := waitForNEvents(t, m, 1, 1)
+	m.Start()
 
 	doRemove(t, m, "existing_file_1.md")
 
@@ -66,6 +70,7 @@ func TestRootFileRemoval(t *testing.T) {
 func TestRootFolderRemoval(t *testing.T) {
 	m := setupTestDirMonitor(t, Recursive)
 	done := waitForNEvents(t, m, 2, 2)
+	m.Start()
 
 	doRemove(t, m, "existing_dir")
 
@@ -78,6 +83,7 @@ func TestRootFolderRemoval(t *testing.T) {
 func TestRootFolderMoveOutOfWatchedDir(t *testing.T) {
 	m := setupTestDirMonitor(t, Recursive)
 	done := waitForNEvents(t, m, 2, 2)
+	m.Start()
 
 	opath := filepath.Join(m.Dir(), "../outside_dir")
 	path := filepath.Join(m.Dir(), "existing_dir")
@@ -96,6 +102,7 @@ func TestRootFolderMoveOutOfWatchedDir(t *testing.T) {
 func TestRootFileEdit(t *testing.T) {
 	m := setupTestDirMonitor(t, Recursive)
 	done := waitForNEvents(t, m, 1, 1)
+	m.Start()
 
 	doWriteFile(t, m, "#foobar", "existing_file_1.md")
 
@@ -107,6 +114,7 @@ func TestRootFileEdit(t *testing.T) {
 func TestRootFileEditTwiceWithSameContent(t *testing.T) {
 	m := setupTestDirMonitor(t, Recursive)
 	done := waitForNEvents(t, m, 2, 2)
+	m.Start()
 
 	doWriteFile(t, m, "#foobar", "existing_file_1.md")
 	fiA, _ := os.Stat(filepath.Join(m.Dir(), "existing_file_1.md"))
@@ -128,6 +136,7 @@ func TestRootFileEditTwiceWithSameContent(t *testing.T) {
 func TestRootFileMove(t *testing.T) {
 	m := setupTestDirMonitor(t, Recursive)
 	done := waitForNEvents(t, m, 1, 1)
+	m.Start()
 
 	doMove(t, m, "existing_file_1.md", "->", "existing_file_2.md")
 
@@ -139,6 +148,7 @@ func TestRootFileMove(t *testing.T) {
 func TestRootFolderCreation(t *testing.T) {
 	m := setupTestDirMonitor(t, Recursive)
 	done := waitForNEvents(t, m, 1, 1)
+	m.Start()
 
 	doCreateFolders(t, m, "folder_1")
 
@@ -150,6 +160,7 @@ func TestRootFolderCreation(t *testing.T) {
 func TestRootFolderMoveExistingFolderSettle(t *testing.T) {
 	m := setupTestDirMonitor(t, Recursive)
 	done := waitForNEvents(t, m, 2, 2)
+	m.Start()
 
 	doMove(t, m, "existing_dir", "->", "existing_folder_2")
 	doSettle()
@@ -164,6 +175,7 @@ func TestRootFolderMoveExistingFolderSettle(t *testing.T) {
 func TestRootFolderMoveExistingFolderNoSettle(t *testing.T) {
 	m := setupTestDirMonitor(t, Recursive)
 	done := waitForNEvents(t, m, 2, 2)
+	m.Start()
 
 	doMove(t, m, "existing_dir", "->", "existing_folder_2")
 	doWriteFile(t, m, "#foobar", "existing_folder_2", "file_1.md")
@@ -179,6 +191,7 @@ func TestRootFolderMoveExistingFolderNoSettle(t *testing.T) {
 func TestSubFolderMoveToExistingSettleBefore(t *testing.T) {
 	m := setupTestDirMonitor(t, Recursive)
 	done := waitForNEvents(t, m, 3, 3)
+	m.Start()
 
 	dir := doCreateFolders(t, m, "folder_1")
 	doSettle()
@@ -195,6 +208,7 @@ func TestSubFolderMoveToExistingSettleBefore(t *testing.T) {
 func TestSubFolderMoveToExistingSettleAfter(t *testing.T) {
 	m := setupTestDirMonitor(t, Recursive)
 	done := waitForNEvents(t, m, 4, 4)
+	m.Start()
 
 	dir := doCreateFolders(t, m, "folder_1")
 	doWriteFile(t, m, "#foobar", "folder_1", "file_1.md")
@@ -214,6 +228,7 @@ func TestSubFolderMoveToExistingSettleAfter(t *testing.T) {
 func TestSubFolderMoveToExistingNoSettle(t *testing.T) {
 	m := setupTestDirMonitor(t, Recursive)
 	done := waitForNEvents(t, m, 2, 3)
+	m.Start()
 
 	doCreateFolders(t, m, "folder_1")
 	doWriteFile(t, m, "#foobar", "folder_1", "file_1.md")
@@ -229,6 +244,7 @@ func TestSubFolderMoveToExistingNoSettle(t *testing.T) {
 func TestSubFolderMoveFromToNewNoSettle(t *testing.T) {
 	m := setupTestDirMonitor(t, Recursive)
 	done := waitForNEvents(t, m, 3, 4)
+	m.Start()
 
 	doCreateFolders(t, m, "folder_2")
 	doCreateFolders(t, m, "folder_1", "sub_folder_1")
@@ -246,6 +262,7 @@ func TestSubFolderMoveFromToNewNoSettle(t *testing.T) {
 func TestSubFolderCreateFileInExistingMaxEvents(t *testing.T) {
 	m := setupTestDirMonitor(t, Recursive)
 	done := waitForNEvents(t, m, 2, 2)
+	m.Start()
 
 	doWriteFile(t, m, "#foobar", "existing_dir", "new_file_1.md")
 
@@ -257,6 +274,7 @@ func TestSubFolderCreateFileInExistingMaxEvents(t *testing.T) {
 func TestSubFolderCreateFileInNew(t *testing.T) {
 	m := setupTestDirMonitor(t, Recursive)
 	done := waitForNEvents(t, m, 2, 2)
+	m.Start()
 
 	dir := doCreateFolders(t, m, "folder_1")
 	doWriteFile(t, m, "#foobar", "folder_1", "file_1.md")
@@ -270,6 +288,7 @@ func TestSubFolderCreateFileInNew(t *testing.T) {
 func TestSubFolderCreateMoveEditRemove(t *testing.T) {
 	m := setupTestDirMonitor(t, Recursive)
 	done := waitForNEvents(t, m, 5, 5)
+	m.Start()
 
 	dir := doCreateFolders(t, m, "folder_1")
 	doWriteFile(t, m, "#foobar", "folder_1", "file_1.md")
@@ -292,6 +311,7 @@ func TestSubFolderCreateMoveEditRemove(t *testing.T) {
 func TestSubFolderCreationNonRecursive(t *testing.T) {
 	m := setupTestDirMonitor(t, NonRecursive)
 	done := waitForNEvents(t, m, 2, 2)
+	m.Start()
 
 	doCreateFolders(t, m, "folder_1")
 	doWriteFile(t, m, "#foobar", "folder_1", "file_1.md")
@@ -304,6 +324,7 @@ func TestSubFolderCreationNonRecursive(t *testing.T) {
 func TestSubFolderCreationRecursive(t *testing.T) {
 	m := setupTestDirMonitor(t, Recursive)
 	done := waitForNEvents(t, m, 3, 3)
+	m.Start()
 
 	dir := doCreateFolders(t, m, "folder_1", "sub_folder_1")
 	doWriteFile(t, m, "#foobar", "folder_1", "sub_folder_1", "file_1.md")
@@ -315,4 +336,43 @@ func TestSubFolderCreationRecursive(t *testing.T) {
 	assertNthDirEvent(t, res.evs, 3, dir)
 }
 
-// Test_StopStartMonitoring
+func TestSubFolderCreationStartStop(t *testing.T) {
+	m := setupTestDirMonitor(t, Recursive)
+
+	//initial start with some events
+	done := waitForNEvents(t, m, 3, 3)
+	m.Start()
+
+	dir := doCreateFolders(t, m, "folder_1", "sub_folder_1")
+	doWriteFile(t, m, "#foobar", "folder_1", "sub_folder_1", "file_1.md")
+
+	res := <-done
+	assertNoErrors(t, res.errs)
+	assertNthDirEvent(t, res.evs, 1, m.Dir())
+	assertNthDirEvent(t, res.evs, 2, filepath.Join(m.Dir(), "folder_1"))
+	assertNthDirEvent(t, res.evs, 3, dir)
+
+	//stop and cause some events
+	done = waitForNEvents(t, m, 1, 1)
+	m.Stop()
+	assertCanEmit(t, m, m.Dir(), false)
+
+	doSettle()
+	doWriteFile(t, m, "#foobar", "folder_1", "sub_folder_1", "file_2.md")
+
+	res = <-done
+	assertTimeout(t, res.errs)
+	doSettle()
+
+	//start again, should recapture events as before
+	done = waitForNEvents(t, m, 1, 1)
+	m.Start()
+
+	doWriteFile(t, m, "#foobar", "folder_1", "sub_folder_1", "file_3.md")
+
+	res = <-done
+	assertNoErrors(t, res.errs)
+	assertNthDirEvent(t, res.evs, 1, dir)
+}
+
+//@todo test leaking goroutines after start/stop

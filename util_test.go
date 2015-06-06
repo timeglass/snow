@@ -145,11 +145,6 @@ func waitForNEvents(t *testing.T, m M, min, max int) chan *results {
 		done <- ress
 	}()
 
-	_, err := m.Start()
-	if err != nil {
-		t.Fatalf("Failed to start monitor: %s", err)
-	}
-
 	return done
 }
 

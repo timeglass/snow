@@ -20,22 +20,18 @@ func NewMonitor(dir string, sel Selector, latency time.Duration) (*Monitor, erro
 		return nil, err
 	}
 
-	es := &fsevents.EventStream{
-		Latency: latency,
-		Paths:   []string{mon.Dir()},
-		Flags:   fsevents.WatchRoot | fsevents.NoDefer,
-	}
-
 	m := &Monitor{
-		es:      es,
 		monitor: mon,
 	}
 
-	go m.throttle()
 	return m, nil
 }
 
 func (m *Monitor) CanEmit(path string) bool {
+	if m.stopped == true {
+		return false
+	}
+
 	if res, err := m.IsSelected(path); !res || err != nil {
 		return false
 	}
@@ -48,6 +44,13 @@ func (m *Monitor) CanEmit(path string) bool {
 }
 
 func (m *Monitor) Start() (chan DirEvent, error) {
+	m.monitor.Start()
+	m.es = &fsevents.EventStream{
+		Latency: m.latency,
+		Paths:   []string{m.Dir()},
+		Flags:   fsevents.WatchRoot | fsevents.NoDefer,
+	}
+
 	m.es.Start()
 	go func() {
 		for msg := range m.es.Events {
@@ -68,4 +71,10 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 	}()
 
 	return m.Events(), nil
+}
+
+func (m *Monitor) Stop() error {
+	m.es.Stop()
+	close(m.es.Events)
+	return m.monitor.Stop()
 }
