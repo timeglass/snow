@@ -220,6 +220,13 @@ func assertNthDirEvent(t *testing.T, evs []DirEvent, n int, dir string) {
 
 }
 
+func assertCanEmit(t *testing.T, m M, path string, expected bool) {
+	res := m.CanEmit(path)
+	if res != expected {
+		t.Fatalf("Expected path '%s' CanEmit() to return %t, got: %t", path, expected, res)
+	}
+}
+
 func assertTimeout(t *testing.T, errs []error) {
 	if len(errs) != 1 {
 		t.Fatalf("Expected 1 error (timeout), received: %d", len(errs))

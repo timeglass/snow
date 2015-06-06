@@ -3,6 +3,7 @@
 package watch
 
 import (
+	"os"
 	"time"
 
 	"github.com/go-fsnotify/fsevents"
@@ -32,6 +33,18 @@ func NewMonitor(dir string, sel Selector, latency time.Duration) (*Monitor, erro
 
 	go m.throttle()
 	return m, nil
+}
+
+func (m *Monitor) CanEmit(path string) bool {
+	if res, err := m.IsSelected(path); !res || err != nil {
+		return false
+	}
+
+	if _, err := os.Stat(path); err != nil {
+		return false
+	}
+
+	return true
 }
 
 func (m *Monitor) Start() (chan DirEvent, error) {

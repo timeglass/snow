@@ -79,11 +79,18 @@ func TestRootFolderMoveOutOfWatchedDir(t *testing.T) {
 	m := setupTestDirMonitor(t, Recursive)
 	done := waitForNEvents(t, m, 2, 2)
 
+	opath := filepath.Join(m.Dir(), "../outside_dir")
+	path := filepath.Join(m.Dir(), "existing_dir")
+	assertCanEmit(t, m, path, true)
+	assertCanEmit(t, m, opath, false)
+
 	doMove(t, m, "existing_dir", "->", "../outside_dir")
 
 	res := <-done
 	assertTimeout(t, res.errs)
 	assertNthDirEvent(t, res.evs, 1, m.Dir())
+	assertCanEmit(t, m, path, false)
+	assertCanEmit(t, m, opath, false)
 }
 
 func TestRootFileEdit(t *testing.T) {
@@ -309,6 +316,3 @@ func TestSubFolderCreationRecursive(t *testing.T) {
 }
 
 // Test_StopStartMonitoring
-// move out of directory
-
-//@todo test dir removal and watch removal

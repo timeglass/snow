@@ -3,10 +3,18 @@ package watch
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
-var Recursive Selector = func(root, path string) (bool, error) { return true, nil }
+var Recursive Selector = func(root, path string) (bool, error) {
+	if strings.HasPrefix(path, root) {
+		return true, nil
+	}
+
+	return false, nil
+}
+
 var NonRecursive Selector = func(root, path string) (bool, error) {
 	if root == path {
 		return true, nil

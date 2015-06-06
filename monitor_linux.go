@@ -128,6 +128,22 @@ func (m *Monitor) handleDirCreation(dir string) error {
 	return nil
 }
 
+func (m *Monitor) CanEmit(path string) bool {
+	if res, err := m.IsSelected(path); !res || err != nil {
+		return false
+	}
+
+	m.Lock()
+	defer m.Unlock()
+	for _, p := range m.paths {
+		if p == path {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (m *Monitor) Start() (chan DirEvent, error) {
 	go func() {
 		var buf [syscall.SizeofInotifyEvent * 4096]byte
