@@ -14,6 +14,8 @@ import (
 const bufferSize = 4096
 
 type Monitor struct {
+	handle syscall.Handle
+	cph    syscall.Handle
 	*monitor
 }
 
@@ -27,7 +29,6 @@ func NewMonitor(dir string, sel Selector, latency time.Duration) (*Monitor, erro
 		monitor: mon,
 	}
 
-	go m.throttle()
 	return m, nil
 }
 
@@ -44,7 +45,27 @@ func (m *Monitor) readDirChanges(h syscall.Handle, pBuff *byte, ov *syscall.Over
 	)
 }
 
+func (m *Monitor) Stop() error {
+	err := m.monitor.Stop()
+	if err != nil {
+		return err
+	}
+
+	err = syscall.CloseHandle(m.handle)
+	if err != nil {
+		return os.NewSyscallError("CloseHandle", err)
+	}
+
+	err = syscall.CloseHandle(m.cph)
+	if err != nil {
+		return os.NewSyscallError("CloseHandle", err)
+	}
+
+	return nil
+}
+
 func (m *Monitor) Start() (chan DirEvent, error) {
+	m.monitor.Start()
 	overlapped := &syscall.Overlapped{}
 	var buffer [bufferSize]byte
 
@@ -53,7 +74,7 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 		return nil, os.NewSyscallError("UTF16PtrFromString", err)
 	}
 
-	h, err := syscall.CreateFile(
+	m.handle, err = syscall.CreateFile(
 		pdir,
 		syscall.FILE_LIST_DIRECTORY,
 		syscall.FILE_SHARE_READ|syscall.FILE_SHARE_WRITE|syscall.FILE_SHARE_DELETE,
@@ -67,9 +88,9 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 		return nil, os.NewSyscallError("CreateFile", err)
 	}
 
-	cph, err := syscall.CreateIoCompletionPort(h, 0, 0, 0)
+	m.cph, err = syscall.CreateIoCompletionPort(m.handle, 0, 0, 0)
 	if err != nil {
-		err2 := syscall.CloseHandle(h)
+		err2 := syscall.CloseHandle(m.handle)
 		if err2 != nil {
 			return nil, os.NewSyscallError("CloseHandle", err2)
 		}
@@ -83,7 +104,15 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 		var ov *syscall.Overlapped
 
 		for {
-			err := syscall.GetQueuedCompletionStatus(cph, &n, &key, &ov, syscall.INFINITE)
+			if m.stopped {
+				return
+			}
+
+			err := syscall.GetQueuedCompletionStatus(m.cph, &n, &key, &ov, syscall.INFINITE)
+			if m.stopped {
+				return
+			}
+
 			switch err {
 			case syscall.ERROR_MORE_DATA:
 				if ov == nil {
@@ -138,7 +167,7 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 			}
 
 			if n != 0 {
-				err = m.readDirChanges(h, &buffer[0], overlapped)
+				err = m.readDirChanges(m.handle, &buffer[0], overlapped)
 				if err != nil {
 					m.errors <- os.NewSyscallError("readDirChanges", err)
 				}
@@ -146,7 +175,7 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 		}
 	}()
 
-	err = m.readDirChanges(h, &buffer[0], overlapped)
+	err = m.readDirChanges(m.handle, &buffer[0], overlapped)
 	if err != nil {
 		return nil, os.NewSyscallError("ReadDirectoryChanges", err)
 	}
