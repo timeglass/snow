@@ -73,7 +73,11 @@ func (m *monitor) throttle() {
 	}
 }
 
-func (m *Monitor) CanEmit(path string) bool {
+func (m *monitor) CanEmit(path string) bool {
+	if m.stopped == true {
+		return false
+	}
+
 	if res, err := m.IsSelected(path); !res || err != nil {
 		return false
 	}
