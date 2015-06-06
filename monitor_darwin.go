@@ -3,7 +3,6 @@
 package watch
 
 import (
-	"os"
 	"time"
 
 	"github.com/go-fsnotify/fsevents"

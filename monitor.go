@@ -2,6 +2,7 @@ package watch
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -70,6 +71,18 @@ func (m *monitor) throttle() {
 		m.events <- ev
 		throttles[ev.Dir()] = time.Now().Add(m.latency)
 	}
+}
+
+func (m *Monitor) CanEmit(path string) bool {
+	if res, err := m.IsSelected(path); !res || err != nil {
+		return false
+	}
+
+	if _, err := os.Stat(path); err != nil {
+		return false
+	}
+
+	return true
 }
 
 func (m *monitor) IsSelected(path string) (bool, error) {
