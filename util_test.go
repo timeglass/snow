@@ -2,10 +2,10 @@ package watch
 
 import (
 	"errors"
-	// "fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -174,6 +174,27 @@ func assertAtLeast(t *testing.T, evs []DirEvent, n int, dir string) {
 	if count != n {
 		t.Fatalf("Expected %d events for '%s', received: %d", n, dir, count)
 	}
+}
+
+func assertNthDirEventNoLongerExists(t *testing.T, evs []DirEvent, n int, dir string) {
+	if len(evs) < n {
+		t.Fatalf("Expected at least %d event(s), received only: %d", n, len(evs))
+	}
+
+	ev := evs[n-1]
+	if !strings.HasPrefix(ev.Dir(), dir) {
+		t.Fatalf("Asserting path, '%s' doesn't has prefix '%s'", ev.Dir(), dir)
+	}
+
+	_, err := os.Stat(dir)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			t.Fatalf("Expected dir '%s' to no longer exists, but received other err: %s", dir, err)
+		}
+	} else {
+		t.Fatalf("Expected dir '%s' to no longer exists, but it did", dir)
+	}
+
 }
 
 func assertNthDirEvent(t *testing.T, evs []DirEvent, n int, dir string) {

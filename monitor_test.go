@@ -65,13 +65,14 @@ func TestRootFileRemoval(t *testing.T) {
 
 func TestRootFolderRemoval(t *testing.T) {
 	m := setupTestDirMonitor(t, Recursive)
-	done := waitForNEvents(t, m, 1, 5)
+	done := waitForNEvents(t, m, 2, 2)
 
 	doRemove(t, m, "existing_dir")
 
 	res := <-done
 	assertNoErrors(t, res.errs)
-	assertNthDirEvent(t, res.evs, 1, m.Dir())
+	assertNthDirEventNoLongerExists(t, res.evs, 1, filepath.Join(m.Dir(), "existing_dir"))
+	assertNthDirEvent(t, res.evs, 2, m.Dir())
 }
 
 func TestRootFileEdit(t *testing.T) {
