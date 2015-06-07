@@ -359,7 +359,7 @@ func TestSubFolderCreationRecursive(t *testing.T) {
 
 func TestWatchedFolderRemoval(t *testing.T) {
 	m := setupTestDirMonitor(t, Recursive)
-	done := waitForNEvents(t, m, 1, 1)
+	done := waitForNEvents(t, m, 1, 4)
 	m.Start()
 
 	doRemove(t, m, "..", "workspace")
