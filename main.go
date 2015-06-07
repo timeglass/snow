@@ -10,7 +10,7 @@ import (
 
 func main() {
 	log := log.New(os.Stdout, "Snow: ", 0)
-	log.Printf(`Greetings, I'm Snow: the file watcher that knows nothing.`)
+	log.Printf(`Greetings, I'm the file system watcher that knows nothing...`)
 
 	cwd, err := os.Getwd()
 	if err != nil {
