@@ -104,6 +104,10 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 		var ov *syscall.Overlapped
 
 		for {
+			if m.stopped {
+				return
+			}
+
 			err := syscall.GetQueuedCompletionStatus(m.cph, &n, &key, &ov, syscall.INFINITE)
 			if m.stopped {
 				return

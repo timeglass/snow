@@ -10,12 +10,16 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
+	"unsafe"
 )
 
 var NrOfOpenFiles = 0
 var NrOfGoroutines = 0
+var NrOfResourceChanges = 0
+
 var Latency = time.Millisecond * 20
 var Timeout = time.Second * 100
 var SettleTime = time.Millisecond * 40
@@ -265,21 +269,42 @@ func assertShutdown(t *testing.T, m M) {
 		}
 	}
 
-	//ugly hack for testing open file descriptors for our process
+	//ugly hacks for testing open file descriptors for our process
+	fnr := 0
+	acceptable := 1
 	if runtime.GOOS == "darwin" || runtime.GOOS == "linux" {
 		out, err := exec.Command("/bin/sh", "-c", fmt.Sprintf("lsof -p %v", os.Getpid())).Output()
 		if err != nil {
 			t.Fatalf("Failed to exec lsof -p: %s", err)
 		}
 
-		fnr := bytes.Count(out, []byte("\n"))
-		if NrOfOpenFiles == 0 {
-			NrOfOpenFiles = fnr
-		} else if fnr != NrOfOpenFiles {
-			t.Fatalf("Doesn't expect the number of open files to increase above %d, got %d", NrOfOpenFiles, fnr)
-		}
+		fnr = bytes.Count(out, []byte("\n"))
 	} else {
-		//@todo check on windows
+		//@see https://github.com/golang/go/blob/master/misc/cgo/test/issue8517_windows.go
+		cp, err := syscall.GetCurrentProcess()
+		if err != nil {
+			t.Fatalf("GetCurrentProcess: %v\n", err)
+		}
+
+		kernel32 := syscall.MustLoadDLL("kernel32.dll")
+		getProcessHandleCount := kernel32.MustFindProc("GetProcessHandleCount")
+		r, _, err := getProcessHandleCount.Call(uintptr(cp), uintptr(unsafe.Pointer(&fnr)))
+		if r == 0 {
+			t.Fatalf("GetProcessHandleCount: %v\n", error(err))
+		}
+
+		acceptable = 2
 	}
 
+	if fnr != NrOfOpenFiles {
+		NrOfResourceChanges++
+	}
+
+	NrOfOpenFiles = fnr
+
+	//windows handles are created more often and we cannot control this
+	//so we simply check if the increase of handles is not uncontrolled
+	if NrOfResourceChanges > acceptable {
+		t.Fatalf("Nr of allocated resources (descriptors/handles) now changed %d times, only %d was deameda acceptalbe for OS %s", NrOfResourceChanges, acceptable, runtime.GOOS)
+	}
 }
