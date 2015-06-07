@@ -381,6 +381,7 @@ func TestWatchedFolderRename(t *testing.T) {
 	assertNoErrors(t, res.errs)
 	assertNthDirEventNoLongerExists(t, res.evs, 1, m.Dir())
 	assertCanEmit(t, m, m.Dir(), false)
+	assertShutdown(t, m)
 }
 
 func TestSubFolderCreationStartStop(t *testing.T) {
@@ -424,3 +425,4 @@ func TestSubFolderCreationStartStop(t *testing.T) {
 }
 
 //@todo test removal of watched directory itself
+//@todo test double shutdown

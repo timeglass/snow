@@ -122,7 +122,6 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 				}
 			case syscall.ERROR_ACCESS_DENIED:
 				// @todo, handle watched dir is removed
-
 				continue
 			case syscall.ERROR_OPERATION_ABORTED:
 				continue
@@ -169,7 +168,6 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 				err = m.readDirChanges(m.handle, &buffer[0], overlapped)
 				if err != nil {
 					if err == syscall.ERROR_ACCESS_DENIED {
-						//@todo handle removal
 						m.Stop()
 						continue
 					}
