@@ -3,6 +3,7 @@
 package watch
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/go-fsnotify/fsevents"
@@ -38,6 +39,8 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 	go func() {
 		for msg := range m.es.Events {
 			for _, ev := range msg {
+				fmt.Println(ev)
+
 				res, err := m.IsSelected(ev.Path)
 				if err != nil {
 					m.errors <- err

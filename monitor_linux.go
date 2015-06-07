@@ -280,6 +280,7 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 
 						//send all but implicit/explicit watch removal
 						if mask&syscall.IN_IGNORED != syscall.IN_IGNORED {
+							fmt.Println(raw, path, name)
 							m.unthrottled <- &mevent{clean}
 						}
 
