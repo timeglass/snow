@@ -1,23 +1,18 @@
 package watch
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
-	"sync"
-	"syscall"
 	"testing"
 	"time"
-	"unsafe"
 )
 
-var NrOfOpenFiles = 0
+var NrOfOpenResources = 0
 var NrOfGoroutines = 0
 var NrOfResourceChanges = 0
 
@@ -271,50 +266,17 @@ func assertShutdown(t *testing.T, m M) {
 	}
 
 	//ugly hacks for testing open file descriptors for our process
-	fnr := 0
+	fnr := nrOfOpenResources(t)
 	acceptable := 1
-	if runtime.GOOS == "darwin" || runtime.GOOS == "linux" {
-		out, err := exec.Command("/bin/sh", "-c", fmt.Sprintf("lsof -p %v", os.Getpid())).Output()
-		if err != nil {
-			t.Fatalf("Failed to exec lsof -p: %s", err)
-		}
-
-		fnr = bytes.Count(out, []byte("\n"))
-	} else {
-		var handleCounter struct {
-			once sync.Once
-			proc *syscall.Proc
-		}
-
-		cp, err := syscall.GetCurrentProcess()
-		if err != nil {
-			t.Fatalf("GetCurrentProcess: %v\n", err)
-		}
-
-		handleCounter.once.Do(func() {
-			d, err := syscall.LoadDLL("kernel32.dll")
-			if err != nil {
-				t.Fatalf("LoadDLL: %v\n", err)
-			}
-			handleCounter.proc, err = d.FindProc("GetProcessHandleCount")
-			if err != nil {
-				t.Fatalf("FindProc: %v\n", err)
-			}
-		})
-
-		r, _, err := handleCounter.proc.Call(uintptr(cp), uintptr(unsafe.Pointer(&fnr)))
-		if r == 0 {
-			t.Fatalf("GetProcessHandleCount: %v\n", error(err))
-		}
-
+	if runtime.GOOS == "windows" {
 		acceptable = 2
 	}
 
-	if fnr != NrOfOpenFiles {
+	if fnr != NrOfOpenResources {
 		NrOfResourceChanges++
 	}
 
-	NrOfOpenFiles = fnr
+	NrOfOpenResources = fnr
 
 	//windows handles are created more often and we cannot control this
 	//so we simply check if the increase of handles is not uncontrolled
