@@ -33,7 +33,7 @@ func NewMonitor(dir string, sel Selector, latency time.Duration) (*Monitor, erro
 	m := &Monitor{
 		pipefd:  []int{-1, -1},
 		paths:   map[int]string{},
-		epes:    make([]syscall.EpollEvent, 0),
+		epes:    []syscall.EpollEvent{},
 		monitor: mon,
 	}
 
@@ -313,7 +313,6 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 					}
 
 				} else if epes[0].Fd == int32(m.pipefd[0]) {
-					//from pipe always means we're closing
 					return
 				} else {
 					m.errors <- fmt.Errorf("epoll wait: unexpected event source: '%d'", epes[0].Fd)
