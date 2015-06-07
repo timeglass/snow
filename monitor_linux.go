@@ -20,7 +20,6 @@ type Monitor struct {
 	pipefd []int
 	epes   []syscall.EpollEvent
 	paths  map[int]string
-	closed chan struct{}
 	*monitor
 	sync.Mutex
 }
@@ -35,7 +34,6 @@ func NewMonitor(dir string, sel Selector, latency time.Duration) (*Monitor, erro
 		pipefd:  []int{-1, -1},
 		paths:   map[int]string{},
 		epes:    make([]syscall.EpollEvent, 0),
-		closed:  make(chan struct{}),
 		monitor: mon,
 	}
 
@@ -193,8 +191,6 @@ func (m *Monitor) Stop() error {
 		delete(m.paths, fd)
 	}
 
-	//make sure routine was indeed closed
-	<-m.closed
 	return nil
 }
 
@@ -210,9 +206,6 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 	}
 
 	go func() {
-		defer func() {
-			m.closed <- struct{}{}
-		}()
 
 		var buf [syscall.SizeofInotifyEvent * 4096]byte
 		var move struct {
