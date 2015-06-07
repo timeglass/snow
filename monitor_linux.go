@@ -40,6 +40,33 @@ func NewMonitor(dir string, sel Selector, latency time.Duration) (*Monitor, erro
 	return m, nil
 }
 
+func (m *Monitor) close() error {
+	m.Lock()
+	defer m.Unlock()
+
+	err := syscall.Close(m.epfd)
+	if err != nil {
+		return os.NewSyscallError("Close", err)
+	}
+
+	err = syscall.Close(m.ifd)
+	if err != nil {
+		return os.NewSyscallError("Close", err)
+	}
+
+	err = syscall.Close(m.pipefd[0])
+	if err != nil {
+		return os.NewSyscallError("Close", err)
+	}
+
+	err = syscall.Close(m.pipefd[1])
+	if err != nil {
+		return os.NewSyscallError("Close", err)
+	}
+
+	return nil
+}
+
 func (m *Monitor) init() error {
 	var err error
 	m.ifd, err = syscall.InotifyInit()
@@ -177,6 +204,7 @@ func (m *Monitor) CanEmit(path string) bool {
 }
 
 func (m *Monitor) Stop() error {
+
 	err := m.monitor.Stop()
 	if err != nil {
 		return err
@@ -313,6 +341,13 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 					}
 
 				} else if epes[0].Fd == int32(m.pipefd[0]) {
+
+					//we are shutting down
+					err := m.close()
+					if err != nil {
+						m.errors <- fmt.Errorf("Failed to close down: %s", err)
+					}
+
 					return
 				} else {
 					m.errors <- fmt.Errorf("epoll wait: unexpected event source: '%d'", epes[0].Fd)

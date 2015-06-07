@@ -1,10 +1,12 @@
 package watch
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -12,6 +14,7 @@ import (
 	"time"
 )
 
+var NrOfOpenFiles = 0
 var NrOfGoroutines = 0
 var Latency = time.Millisecond * 20
 var Timeout = time.Second * 100
@@ -261,4 +264,22 @@ func assertShutdown(t *testing.T, m M) {
 			panic(fmt.Sprintf("Dont expect the number of goroutines to increase above %d, got: %d", NrOfGoroutines, nr))
 		}
 	}
+
+	//ugly hack for testing open file descriptors for our process
+	if runtime.GOOS == "darwin" || runtime.GOOS == "linux" {
+		out, err := exec.Command("/bin/sh", "-c", fmt.Sprintf("lsof -p %v", os.Getpid())).Output()
+		if err != nil {
+			t.Fatalf("Failed to exec lsof -p: %s", err)
+		}
+
+		fnr := bytes.Count(out, []byte("\n"))
+		if NrOfOpenFiles == 0 {
+			NrOfOpenFiles = fnr
+		} else if fnr != NrOfOpenFiles {
+			t.Fatalf("Doesn't expect the number of open files to increase above %d, got %d", NrOfOpenFiles, fnr)
+		}
+	} else {
+		//@todo check on windows
+	}
+
 }
