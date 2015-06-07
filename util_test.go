@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -280,15 +281,28 @@ func assertShutdown(t *testing.T, m M) {
 
 		fnr = bytes.Count(out, []byte("\n"))
 	} else {
-		//@see https://github.com/golang/go/blob/master/misc/cgo/test/issue8517_windows.go
+		var handleCounter struct {
+			once sync.Once
+			proc *syscall.Proc
+		}
+
 		cp, err := syscall.GetCurrentProcess()
 		if err != nil {
 			t.Fatalf("GetCurrentProcess: %v\n", err)
 		}
 
-		kernel32 := syscall.MustLoadDLL("kernel32.dll")
-		getProcessHandleCount := kernel32.MustFindProc("GetProcessHandleCount")
-		r, _, err := getProcessHandleCount.Call(uintptr(cp), uintptr(unsafe.Pointer(&fnr)))
+		handleCounter.once.Do(func() {
+			d, err := syscall.LoadDLL("kernel32.dll")
+			if err != nil {
+				t.Fatalf("LoadDLL: %v\n", err)
+			}
+			handleCounter.proc, err = d.FindProc("GetProcessHandleCount")
+			if err != nil {
+				t.Fatalf("FindProc: %v\n", err)
+			}
+		})
+
+		r, _, err := handleCounter.proc.Call(uintptr(cp), uintptr(unsafe.Pointer(&fnr)))
 		if r == 0 {
 			t.Fatalf("GetProcessHandleCount: %v\n", error(err))
 		}
