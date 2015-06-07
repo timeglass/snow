@@ -117,7 +117,7 @@ func (m *Monitor) addWatch(dir string) error {
 	// (perhaps via a different link to the same object), then the
 	// descriptor for the existing watch is returned
 	// @see http://man7.org/linux/man-pages/man2/inotify_add_watch.2.html
-	wfd, err := syscall.InotifyAddWatch(m.ifd, dir, syscall.IN_DELETE_SELF|syscall.IN_CREATE|syscall.IN_DELETE|syscall.IN_MODIFY|syscall.IN_MOVED_FROM|syscall.IN_MOVED_TO|syscall.IN_ONLYDIR)
+	wfd, err := syscall.InotifyAddWatch(m.ifd, dir, syscall.IN_MOVE_SELF|syscall.IN_DELETE_SELF|syscall.IN_CREATE|syscall.IN_DELETE|syscall.IN_MODIFY|syscall.IN_MOVED_FROM|syscall.IN_MOVED_TO|syscall.IN_ONLYDIR)
 	if err != nil {
 		return os.NewSyscallError("InotifyAddWatch", err)
 	}
@@ -278,14 +278,24 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 						m.Unlock()
 						clean := filepath.Clean(path)
 
-						//send all but implicit/explicit watch removal
-						if mask&syscall.IN_IGNORED != syscall.IN_IGNORED && mask&syscall.IN_DELETE_SELF != syscall.IN_DELETE_SELF {
+						//send all but implicit/explicit watch removal and self events
+						if mask&syscall.IN_IGNORED != syscall.IN_IGNORED &&
+							mask&syscall.IN_DELETE_SELF != syscall.IN_DELETE_SELF &&
+							mask&syscall.IN_MOVE_SELF != syscall.IN_MOVE_SELF {
 							m.unthrottled <- &mevent{clean}
 						}
 
-						//root directory removed? stop the monitor
-						if mask&syscall.IN_DELETE_SELF == syscall.IN_DELETE_SELF && m.Dir() == clean {
-							m.Stop()
+						//root directory removed/renamed stop the monitor
+						if m.Dir() == clean {
+							//do a single event if the root dir is moved
+							if mask&syscall.IN_MOVE_SELF == syscall.IN_MOVE_SELF {
+								m.unthrottled <- &mevent{clean}
+							}
+
+							if mask&syscall.IN_DELETE_SELF == syscall.IN_DELETE_SELF ||
+								mask&syscall.IN_MOVE_SELF == syscall.IN_MOVE_SELF {
+								m.Stop()
+							}
 						}
 
 						//something happend to a dir (created, deleted, moved etc)
