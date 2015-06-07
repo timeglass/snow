@@ -398,4 +398,3 @@ func TestSubFolderCreationStartStop(t *testing.T) {
 }
 
 //@todo test removal of watched directory itself
-//@todo assert leaked (file)handles

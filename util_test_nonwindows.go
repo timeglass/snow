@@ -7,11 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"runtime"
-	"syscall"
 	"testing"
-	"time"
-	"unsafe"
 )
 
 func nrOfOpenResources(t *testing.T) int {
