@@ -248,7 +248,7 @@ func assertNoErrors(t *testing.T, errs []error) {
 
 func assertShutdown(t *testing.T, m M) {
 	err := m.Stop()
-	if err != nil {
+	if err != nil && err != ErrAlreadyStopped {
 		t.Fatalf("Failed to stop: %s", err)
 	}
 

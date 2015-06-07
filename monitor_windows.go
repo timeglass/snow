@@ -65,7 +65,11 @@ func (m *Monitor) Stop() error {
 }
 
 func (m *Monitor) Start() (chan DirEvent, error) {
-	m.monitor.Start()
+	err := m.monitor.Start()
+	if err != nil {
+		return m.Events(), err
+	}
+
 	overlapped := &syscall.Overlapped{}
 	var buffer [bufferSize]byte
 

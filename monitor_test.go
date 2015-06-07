@@ -368,8 +368,12 @@ func TestWatchedFolderRemoval(t *testing.T) {
 	assertNoErrors(t, res.errs)
 	assertNthDirEventNoLongerExists(t, res.evs, 1, m.Dir())
 	assertCanEmit(t, m, m.Dir(), false)
+	assertShutdown(t, m)
 }
 
+// unfortunately, it seems to be impossible to let the
+// watcher stop on root foler rename when it comes to Windows,
+// it does behave almost similar
 func TestWatchedFolderRename(t *testing.T) {
 	m := setupTestDirMonitor(t, Recursive)
 	done := waitForNEvents(t, m, 2, 2)
@@ -383,6 +387,7 @@ func TestWatchedFolderRename(t *testing.T) {
 	assertTimeout(t, res.errs)
 	assertNthDirEventNoLongerExists(t, res.evs, 1, m.Dir())
 	assertCanEmit(t, m, m.Dir(), false)
+	assertShutdown(t, m)
 }
 
 func TestSubFolderCreationStartStop(t *testing.T) {
@@ -440,9 +445,7 @@ func TestDoubleStartAndStop(t *testing.T) {
 
 	_, err = m.Start()
 	if err == nil {
-		mm := m.(*Monitor)
-
-		t.Fatalf("Shouldnt start: %s (%t)", err, mm.stopped)
+		t.Fatalf("Shouldnt start")
 	}
 
 	doSettle()
