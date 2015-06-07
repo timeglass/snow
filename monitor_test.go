@@ -372,13 +372,15 @@ func TestWatchedFolderRemoval(t *testing.T) {
 
 func TestWatchedFolderRename(t *testing.T) {
 	m := setupTestDirMonitor(t, Recursive)
-	done := waitForNEvents(t, m, 1, 4)
+	done := waitForNEvents(t, m, 2, 2)
 	m.Start()
 
 	doMove(t, m, "..", "workspace", "->", "../workspace_new")
+	doSettle()
+	doWriteFile(t, m, "#foobar", "..", "workspace_new", "file_3.md")
 
 	res := <-done
-	assertNoErrors(t, res.errs)
+	assertTimeout(t, res.errs)
 	assertNthDirEventNoLongerExists(t, res.evs, 1, m.Dir())
 	assertCanEmit(t, m, m.Dir(), false)
 }
