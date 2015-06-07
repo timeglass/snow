@@ -24,7 +24,7 @@ type Monitor struct {
 	sync.Mutex
 }
 
-func NewMonitor(dir string, sel Selector, latency time.Duration) (*Monitor, error) {
+func new(dir string, sel Selector, latency time.Duration) (*Monitor, error) {
 	mon, err := newMonitor(dir, sel, latency)
 	if err != nil {
 		return nil, err

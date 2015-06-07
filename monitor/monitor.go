@@ -4,25 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 )
-
-var Recursive Selector = func(root, path string) (bool, error) {
-	if strings.HasPrefix(path, root) {
-		return true, nil
-	}
-
-	return false, nil
-}
-
-var NonRecursive Selector = func(root, path string) (bool, error) {
-	if root == path {
-		return true, nil
-	}
-
-	return false, nil
-}
 
 //a monitor event
 type mevent struct {

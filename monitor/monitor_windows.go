@@ -19,7 +19,7 @@ type Monitor struct {
 	*monitor
 }
 
-func NewMonitor(dir string, sel Selector, latency time.Duration) (*Monitor, error) {
+func new(dir string, sel Selector, latency time.Duration) (*Monitor, error) {
 	mon, err := newMonitor(dir, sel, latency)
 	if err != nil {
 		return nil, err

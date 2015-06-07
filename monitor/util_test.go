@@ -52,7 +52,7 @@ func setupTestDir(t *testing.T) string {
 func setupTestDirMonitor(t *testing.T, sel Selector) M {
 	tdir := setupTestDir(t)
 
-	m, err := NewMonitor(tdir, sel, Latency)
+	m, err := New(tdir, sel, Latency)
 	if err != nil {
 		t.Fatalf("Failed to create monitor: %s", err)
 	}
