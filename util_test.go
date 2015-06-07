@@ -2,6 +2,7 @@ package watch
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -257,7 +258,7 @@ func assertShutdown(t *testing.T, m M) {
 		NrOfGoroutines = nr
 	} else {
 		if nr != NrOfGoroutines {
-			t.Fatalf("Dont expect the number of goroutines to increase above %d, got: %d", NrOfGoroutines, nr)
+			panic(fmt.Sprintf("Dont expect the number of goroutines to increase above %d, got: %d", NrOfGoroutines, nr))
 		}
 	}
 }

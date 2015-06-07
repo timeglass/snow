@@ -397,5 +397,5 @@ func TestSubFolderCreationStartStop(t *testing.T) {
 	assertShutdown(t, m)
 }
 
-//@todo test leaking goroutines after start/stop
+//@todo test removal of watched directory itself
 //@todo assert leaked (file)handles

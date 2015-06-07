@@ -104,10 +104,6 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 		var ov *syscall.Overlapped
 
 		for {
-			if m.stopped {
-				return
-			}
-
 			err := syscall.GetQueuedCompletionStatus(m.cph, &n, &key, &ov, syscall.INFINITE)
 			if m.stopped {
 				return
@@ -121,10 +117,7 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 					n = uint32(unsafe.Sizeof(buffer))
 				}
 			case syscall.ERROR_ACCESS_DENIED:
-				// Watched directory was probably removed
-				// w.sendEvent(watch.path, watch.mask&sys_FS_DELETE_SELF)
-				// w.deleteWatch(watch)
-				// w.startRead(watch)
+				// @todo, handle watched dir is removed
 				continue
 			case syscall.ERROR_OPERATION_ABORTED:
 				continue
@@ -166,7 +159,8 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 				}
 			}
 
-			if n != 0 {
+			//schedule new read if we didn't stop in the meantime
+			if n != 0 && !m.stopped {
 				err = m.readDirChanges(m.handle, &buffer[0], overlapped)
 				if err != nil {
 					m.errors <- os.NewSyscallError("readDirChanges", err)
