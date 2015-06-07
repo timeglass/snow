@@ -27,7 +27,11 @@ func NewMonitor(dir string, sel Selector, latency time.Duration) (*Monitor, erro
 }
 
 func (m *Monitor) Start() (chan DirEvent, error) {
-	m.monitor.Start()
+	err := m.monitor.Start()
+	if err != nil {
+		return m.Events(), err
+	}
+
 	m.es = &fsevents.EventStream{
 		Latency: m.latency,
 		Paths:   []string{m.Dir()},
@@ -62,7 +66,12 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 }
 
 func (m *Monitor) Stop() error {
+	err := m.monitor.Stop()
+	if err != nil {
+		return err
+	}
+
 	m.es.Stop()
 	close(m.es.Events)
-	return m.monitor.Stop()
+	return nil
 }

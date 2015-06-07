@@ -1,5 +1,12 @@
 package watch
 
+import (
+	"errors"
+)
+
+var ErrAlreadyStarted = errors.New("The monitor is already running")
+var ErrAlreadyStopped = errors.New("The monitor is already not running")
+
 type DirEvent interface {
 	Dir() string
 }

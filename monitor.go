@@ -52,6 +52,7 @@ func newMonitor(dir string, sel Selector, latency time.Duration) (*monitor, erro
 		latency:     latency,
 		sel:         sel,
 		dir:         rdir,
+		stopped:     true,
 		unthrottled: make(chan DirEvent),
 		events:      make(chan DirEvent),
 		errors:      make(chan error),
@@ -107,6 +108,10 @@ func (m *monitor) Errors() chan error {
 }
 
 func (m *monitor) Start() error {
+	if m.stopped == false {
+		return ErrAlreadyStarted
+	}
+
 	m.stopped = false
 	m.unthrottled = make(chan DirEvent)
 
@@ -115,6 +120,10 @@ func (m *monitor) Start() error {
 }
 
 func (m *monitor) Stop() error {
+	if m.stopped == true {
+		return ErrAlreadyStopped
+	}
+
 	m.stopped = true
 	close(m.unthrottled)
 	return nil

@@ -253,7 +253,7 @@ func assertShutdown(t *testing.T, m M) {
 	}
 
 	//wait for the garbage collector
-	<-time.After(time.Millisecond * 5)
+	<-time.After(time.Millisecond * 10)
 
 	//check that goroutines dont leak
 	nr := runtime.NumGoroutine()

@@ -204,7 +204,6 @@ func (m *Monitor) CanEmit(path string) bool {
 }
 
 func (m *Monitor) Stop() error {
-
 	err := m.monitor.Stop()
 	if err != nil {
 		return err
@@ -225,7 +224,7 @@ func (m *Monitor) Stop() error {
 func (m *Monitor) Start() (chan DirEvent, error) {
 	err := m.monitor.Start()
 	if err != nil {
-		return m.Events(), nil
+		return m.Events(), err
 	}
 
 	err = m.init()
