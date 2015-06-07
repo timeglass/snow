@@ -5,11 +5,13 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
 )
 
+var NrOfGoroutines = 0
 var Latency = time.Millisecond * 20
 var Timeout = time.Second * 100
 var SettleTime = time.Millisecond * 40
@@ -238,4 +240,24 @@ func assertNoErrors(t *testing.T, errs []error) {
 	}
 
 	t.Fatalf("Expected no errors, got %d: %s", len(errs), errs)
+}
+
+func assertShutdown(t *testing.T, m M) {
+	err := m.Stop()
+	if err != nil {
+		t.Fatalf("Failed to stop: %s", err)
+	}
+
+	//wait for the garbage collector
+	<-time.After(time.Millisecond * 5)
+
+	//check that goroutines dont leak
+	nr := runtime.NumGoroutine()
+	if NrOfGoroutines == 0 {
+		NrOfGoroutines = nr
+	} else {
+		if nr != NrOfGoroutines {
+			t.Fatalf("Dont expect the number of goroutines to increase above %d, got: %d", NrOfGoroutines, nr)
+		}
+	}
 }

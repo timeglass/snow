@@ -108,12 +108,15 @@ func (m *monitor) Errors() chan error {
 
 func (m *monitor) Start() error {
 	m.stopped = false
+	m.unthrottled = make(chan DirEvent)
+
 	go m.throttle()
 	return nil
 }
 
 func (m *monitor) Stop() error {
 	m.stopped = true
+	close(m.unthrottled)
 	return nil
 }
 

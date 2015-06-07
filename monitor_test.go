@@ -25,6 +25,7 @@ func TestRootFileCreation(t *testing.T) {
 	res := <-done
 	assertNoErrors(t, res.errs)
 	assertNthDirEvent(t, res.evs, 1, m.Dir())
+	assertShutdown(t, m)
 }
 
 func TestRootFileCreationTwice(t *testing.T) {
@@ -38,6 +39,7 @@ func TestRootFileCreationTwice(t *testing.T) {
 	res := <-done
 	assertTimeout(t, res.errs)
 	assertNthDirEvent(t, res.evs, 1, m.Dir())
+	assertShutdown(t, m)
 }
 
 func TestRootFileCreationTwiceWithSettle(t *testing.T) {
@@ -53,6 +55,7 @@ func TestRootFileCreationTwiceWithSettle(t *testing.T) {
 	assertNoErrors(t, res.errs)
 	assertNthDirEvent(t, res.evs, 1, m.Dir())
 	assertNthDirEvent(t, res.evs, 2, m.Dir())
+	assertShutdown(t, m)
 }
 
 func TestRootFileRemoval(t *testing.T) {
@@ -65,6 +68,7 @@ func TestRootFileRemoval(t *testing.T) {
 	res := <-done
 	assertNoErrors(t, res.errs)
 	assertNthDirEvent(t, res.evs, 1, m.Dir())
+	assertShutdown(t, m)
 }
 
 func TestRootFolderRemoval(t *testing.T) {
@@ -78,6 +82,7 @@ func TestRootFolderRemoval(t *testing.T) {
 	assertNoErrors(t, res.errs)
 	assertNthDirEventNoLongerExists(t, res.evs, 1, filepath.Join(m.Dir(), "existing_dir"))
 	assertNthDirEvent(t, res.evs, 2, m.Dir())
+	assertShutdown(t, m)
 }
 
 func TestRootFolderMoveOutOfWatchedDir(t *testing.T) {
@@ -97,6 +102,7 @@ func TestRootFolderMoveOutOfWatchedDir(t *testing.T) {
 	assertNthDirEvent(t, res.evs, 1, m.Dir())
 	assertCanEmit(t, m, path, false)
 	assertCanEmit(t, m, opath, false)
+	assertShutdown(t, m)
 }
 
 func TestRootFileEdit(t *testing.T) {
@@ -109,6 +115,7 @@ func TestRootFileEdit(t *testing.T) {
 	res := <-done
 	assertNoErrors(t, res.errs)
 	assertNthDirEvent(t, res.evs, 1, m.Dir())
+	assertShutdown(t, m)
 }
 
 func TestRootFileEditTwiceWithSameContent(t *testing.T) {
@@ -131,6 +138,7 @@ func TestRootFileEditTwiceWithSameContent(t *testing.T) {
 	assertNoErrors(t, res.errs)
 	assertNthDirEvent(t, res.evs, 1, m.Dir())
 	assertNthDirEvent(t, res.evs, 2, m.Dir())
+	assertShutdown(t, m)
 }
 
 func TestRootFileMove(t *testing.T) {
@@ -143,6 +151,7 @@ func TestRootFileMove(t *testing.T) {
 	res := <-done
 	assertNoErrors(t, res.errs)
 	assertNthDirEvent(t, res.evs, 1, m.Dir())
+	assertShutdown(t, m)
 }
 
 func TestRootFolderCreation(t *testing.T) {
@@ -155,6 +164,7 @@ func TestRootFolderCreation(t *testing.T) {
 	res := <-done
 	assertNoErrors(t, res.errs)
 	assertNthDirEvent(t, res.evs, 1, m.Dir())
+	assertShutdown(t, m)
 }
 
 func TestRootFolderMoveExistingFolderSettle(t *testing.T) {
@@ -170,6 +180,7 @@ func TestRootFolderMoveExistingFolderSettle(t *testing.T) {
 	assertNoErrors(t, res.errs)
 	assertNthDirEvent(t, res.evs, 1, m.Dir())
 	assertNthDirEvent(t, res.evs, 2, filepath.Join(m.Dir(), "existing_folder_2"))
+	assertShutdown(t, m)
 }
 
 func TestRootFolderMoveExistingFolderNoSettle(t *testing.T) {
@@ -184,6 +195,7 @@ func TestRootFolderMoveExistingFolderNoSettle(t *testing.T) {
 	assertNoErrors(t, res.errs)
 	assertNthDirEvent(t, res.evs, 1, m.Dir())
 	assertNthDirEvent(t, res.evs, 2, filepath.Join(m.Dir(), "existing_folder_2"))
+	assertShutdown(t, m)
 }
 
 // do stuff in sub folders
@@ -203,6 +215,7 @@ func TestSubFolderMoveToExistingSettleBefore(t *testing.T) {
 	assertNthDirEvent(t, res.evs, 1, m.Dir())
 	assertNthDirEvent(t, res.evs, 2, dir)
 	assertNthDirEvent(t, res.evs, 3, filepath.Join(m.Dir(), "existing_dir"))
+	assertShutdown(t, m)
 }
 
 func TestSubFolderMoveToExistingSettleAfter(t *testing.T) {
@@ -221,6 +234,7 @@ func TestSubFolderMoveToExistingSettleAfter(t *testing.T) {
 	assertNthDirEvent(t, res.evs, 2, dir)
 	assertNthDirEvent(t, res.evs, 3, filepath.Join(m.Dir(), "folder_1"))
 	assertNthDirEvent(t, res.evs, 4, filepath.Join(m.Dir(), "existing_dir"))
+	assertShutdown(t, m)
 }
 
 //unfortunately we cannot guarantee that inotify will an event
@@ -239,6 +253,7 @@ func TestSubFolderMoveToExistingNoSettle(t *testing.T) {
 	assertAtLeast(t, res.evs, 1, m.Dir())
 	assertAtLeast(t, res.evs, 1, filepath.Join(m.Dir(), "existing_dir"))
 	assertNthDirEvent(t, res.evs, 1, m.Dir())
+	assertShutdown(t, m)
 }
 
 func TestSubFolderMoveFromToNewNoSettle(t *testing.T) {
@@ -257,6 +272,7 @@ func TestSubFolderMoveFromToNewNoSettle(t *testing.T) {
 	assertAtLeast(t, res.evs, 1, filepath.Join(m.Dir(), "folder_1"))
 	assertAtLeast(t, res.evs, 1, filepath.Join(m.Dir(), "folder_2"))
 	assertNthDirEvent(t, res.evs, 1, m.Dir())
+	assertShutdown(t, m)
 }
 
 func TestSubFolderCreateFileInExistingMaxEvents(t *testing.T) {
@@ -269,6 +285,7 @@ func TestSubFolderCreateFileInExistingMaxEvents(t *testing.T) {
 	res := <-done
 	assertTimeout(t, res.errs)
 	assertNthDirEvent(t, res.evs, 1, filepath.Join(m.Dir(), "existing_dir"))
+	assertShutdown(t, m)
 }
 
 func TestSubFolderCreateFileInNew(t *testing.T) {
@@ -283,6 +300,7 @@ func TestSubFolderCreateFileInNew(t *testing.T) {
 	assertNoErrors(t, res.errs)
 	assertNthDirEvent(t, res.evs, 1, m.Dir())
 	assertNthDirEvent(t, res.evs, 2, dir)
+	assertShutdown(t, m)
 }
 
 func TestSubFolderCreateMoveEditRemove(t *testing.T) {
@@ -306,6 +324,7 @@ func TestSubFolderCreateMoveEditRemove(t *testing.T) {
 	assertNthDirEvent(t, res.evs, 3, dir)
 	assertNthDirEvent(t, res.evs, 4, dir)
 	assertNthDirEvent(t, res.evs, 5, dir)
+	assertShutdown(t, m)
 }
 
 func TestSubFolderCreationNonRecursive(t *testing.T) {
@@ -319,6 +338,7 @@ func TestSubFolderCreationNonRecursive(t *testing.T) {
 	res := <-done
 	assertTimeout(t, res.errs)
 	assertNthDirEvent(t, res.evs, 1, m.Dir())
+	assertShutdown(t, m)
 }
 
 func TestSubFolderCreationRecursive(t *testing.T) {
@@ -334,6 +354,7 @@ func TestSubFolderCreationRecursive(t *testing.T) {
 	assertNthDirEvent(t, res.evs, 1, m.Dir())
 	assertNthDirEvent(t, res.evs, 2, filepath.Join(m.Dir(), "folder_1"))
 	assertNthDirEvent(t, res.evs, 3, dir)
+	assertShutdown(t, m)
 }
 
 func TestSubFolderCreationStartStop(t *testing.T) {
@@ -373,6 +394,7 @@ func TestSubFolderCreationStartStop(t *testing.T) {
 	res = <-done
 	assertNoErrors(t, res.errs)
 	assertNthDirEvent(t, res.evs, 1, dir)
+	assertShutdown(t, m)
 }
 
 //@todo test leaking goroutines after start/stop
