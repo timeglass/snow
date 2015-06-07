@@ -1,6 +1,6 @@
 // +build linux
 
-package watch
+package monitor
 
 import (
 	"fmt"

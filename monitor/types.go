@@ -1,4 +1,4 @@
-package watch
+package monitor
 
 import (
 	"errors"

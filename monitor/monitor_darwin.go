@@ -1,6 +1,6 @@
 // +build darwin
 
-package watch
+package monitor
 
 import (
 	"time"

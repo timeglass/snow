@@ -1,6 +1,6 @@
 // +build windows
 
-package watch
+package monitor
 
 import (
 	"syscall"
