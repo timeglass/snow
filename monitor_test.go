@@ -359,7 +359,7 @@ func TestSubFolderCreationRecursive(t *testing.T) {
 
 func TestWatchedFolderRemoval(t *testing.T) {
 	m := setupTestDirMonitor(t, Recursive)
-	done := waitForNEvents(t, m, 2, 2)
+	done := waitForNEvents(t, m, 1, 1)
 	m.Start()
 
 	doRemove(t, m, "..", "workspace")
@@ -367,7 +367,7 @@ func TestWatchedFolderRemoval(t *testing.T) {
 	res := <-done
 	assertNoErrors(t, res.errs)
 	assertNthDirEventNoLongerExists(t, res.evs, 1, m.Dir())
-	assertNthDirEventNoLongerExists(t, res.evs, 2, m.Dir())
+	assertCanEmit(t, m, m.Dir(), false)
 }
 
 func TestSubFolderCreationStartStop(t *testing.T) {
