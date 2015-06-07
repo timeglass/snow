@@ -5,7 +5,7 @@ package watch
 import (
 	"time"
 
-	"github.com/go-fsnotify/fsevents"
+	"github.com/timeglass/snow/_vendor/github.com/go-fsnotify/fsevents"
 )
 
 type Monitor struct {
