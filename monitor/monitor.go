@@ -28,7 +28,7 @@ type monitor struct {
 func newMonitor(dir string, sel Selector, latency time.Duration) (*monitor, error) {
 	rdir, err := filepath.EvalSymlinks(dir)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to eval symlink for '%s': %s", dir, rdir)
+		return nil, fmt.Errorf("Failed to eval symlink for '%s': %s", dir, err)
 	}
 
 	return &monitor{
