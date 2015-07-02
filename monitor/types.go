@@ -52,5 +52,10 @@ func New(dir string, sel Selector, latency time.Duration) (M, error) {
 		latency = time.Millisecond * 50
 	}
 
-	return new(dir, sel, latency)
+	m, err := new(dir, sel, latency)
+	if err != nil {
+		return nil, err
+	}
+
+	return m, nil
 }

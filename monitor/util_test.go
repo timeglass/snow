@@ -281,6 +281,6 @@ func assertShutdown(t *testing.T, m M) {
 	//windows handles are created more often and we cannot control this
 	//so we simply check if the increase of handles is not uncontrolled
 	if NrOfResourceChanges > acceptable {
-		t.Fatalf("Nr of allocated resources (descriptors/handles) now changed %d times, only %d was deameda acceptalbe for OS %s", NrOfResourceChanges, acceptable, runtime.GOOS)
+		t.Fatalf("Nr of allocated resources (descriptors/handles) now changed %d times, only %d was deemed acceptalbe for OS %s", NrOfResourceChanges, acceptable, runtime.GOOS)
 	}
 }

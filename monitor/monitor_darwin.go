@@ -71,7 +71,12 @@ func (m *Monitor) Stop() error {
 		return err
 	}
 
+	//@todo sometimes fatal error: unexpected signal during runtime execution
+	//but needs to be called to release open resources
 	m.es.Stop()
+
+	//@todo without closing, the program will leak goroutines
 	close(m.es.Events)
+
 	return nil
 }
