@@ -278,7 +278,7 @@ func (m *Monitor) Start() (chan DirEvent, error) {
 						clean := filepath.Clean(path)
 
 						//send all but implicit/explicit watch removal and self events
-						if mask&syscall.IN_IGNORED != syscall.IN_IGNORED &&
+						if !m.stopped && mask&syscall.IN_IGNORED != syscall.IN_IGNORED &&
 							mask&syscall.IN_DELETE_SELF != syscall.IN_DELETE_SELF &&
 							mask&syscall.IN_MOVE_SELF != syscall.IN_MOVE_SELF {
 							m.unthrottled <- &mevent{clean}

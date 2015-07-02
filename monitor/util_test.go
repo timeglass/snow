@@ -249,7 +249,7 @@ func assertNoErrors(t *testing.T, errs []error) {
 func assertShutdown(t *testing.T, m M) {
 	err := m.Stop()
 	if err != nil && err != ErrAlreadyStopped {
-		t.Fatalf("Failed to stop: %s", err)
+		t.Fatalf(fmt.Sprint("Failed to stop: %s"), err)
 	}
 
 	//wait for the garbage collector
@@ -261,7 +261,7 @@ func assertShutdown(t *testing.T, m M) {
 		NrOfGoroutines = nr
 	} else {
 		if nr != NrOfGoroutines {
-			panic(fmt.Sprintf("Dont expect the number of goroutines to increase above %d, got: %d", NrOfGoroutines, nr))
+			t.Fatalf("Dont expect the number of goroutines to increase above %d, got: %d", NrOfGoroutines, nr)
 		}
 	}
 

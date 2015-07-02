@@ -23,6 +23,7 @@ type monitor struct {
 	unthrottled chan DirEvent
 	events      chan DirEvent
 	errors      chan error
+	stop        chan struct{}
 }
 
 func newMonitor(dir string, sel Selector, latency time.Duration) (*monitor, error) {
@@ -39,21 +40,27 @@ func newMonitor(dir string, sel Selector, latency time.Duration) (*monitor, erro
 		unthrottled: make(chan DirEvent),
 		events:      make(chan DirEvent),
 		errors:      make(chan error),
+		stop:        make(chan struct{}),
 	}, nil
 }
 
 func (m *monitor) throttle() {
 	throttles := map[string]time.Time{}
-	for ev := range m.unthrottled {
-		if until, ok := throttles[ev.Dir()]; ok {
-			diff := until.Sub(time.Now())
-			if diff > 0 {
-				continue
+	for {
+		select {
+		case <-m.stop:
+			return
+		case ev := <-m.unthrottled:
+			if until, ok := throttles[ev.Dir()]; ok {
+				diff := until.Sub(time.Now())
+				if diff > 0 {
+					continue
+				}
 			}
-		}
 
-		m.events <- ev
-		throttles[ev.Dir()] = time.Now().Add(m.latency)
+			m.events <- ev
+			throttles[ev.Dir()] = time.Now().Add(m.latency)
+		}
 	}
 }
 
@@ -107,8 +114,8 @@ func (m *monitor) Stop() error {
 		return ErrAlreadyStopped
 	}
 
+	m.stop <- struct{}{}
 	m.stopped = true
-	close(m.unthrottled)
 	return nil
 }
 
