@@ -1,7 +1,6 @@
 # snow
 The watcher that knows nothing.
 
-
 ## Introduction
 There have been several attempts at creating a file system watcher for the Go ecosystem. Below are a few that i've encountered in my search:
 
@@ -29,10 +28,10 @@ Linux | inotify | no, not configurable | high
 Windows | ReadDirectoryChangesW | configurable | high
 OSX | FSEvents | yes, not configurable | low
 
-As you may notice, OSX is the main culprit. It forces the implementation to be recursive by default and doesn't provide specifics on how a file changed.
+This 'matrix of hell' makes it difficult to create an abstraction layer on top that is reliable and consistent.
 
 ##The Solution
-In my opinion one has to simply accept the limitations of FSEvent and use their "something happened in a directory" as the abstraction. This effectively delegates the logic for on how to handles events for specific files in that directory to the consumer of the library. 
+In my opinion one has to simply accept the approach of FSEvent and use its "something happened in a directory" as the abstraction. This effectively delegates the logic for on how to handles events for specific files in that directory to the consumer of the library. 
 
 In practice, this actually makes sense. It often up to the implementation to determine what event constitutes a file change anyway: 
 
@@ -41,10 +40,45 @@ In practice, this actually makes sense. It often up to the implementation to det
 - when files are moved outside the monitored directory, should those be considered as removals?
 - what about atomic saves that some IDE's use, are those truly two events or do you want to handle them as a file modification?
 
-Such an abstraction also makes the implementation significantly simpler and allows us to clearly state the guarantees this library offers:
+Such an abstraction also makes the implementation significantly simpler and allows us to clearly state the guarantees this library offers: 
 
- - It any number of changes inside a directory guarantees _at least_ one event per directory and _at most_ one per latency period (see interface below)?
- - .... minimum latency?
+On any number of changes inside a directory it guarantees _at least_ one event per directory and _at most_ one per latency period. A event is emitted for each single directory, in a scanning scenario you would never need to reexamine it's subdirectories.
 
-## The interface
-<wip>
+## Take it for a spin
+Using the library is straight forward:
+
+```Go
+import "github.com/timeglass/snow/monitor"
+
+...
+
+//create a monitor for a given root directory with its default configuration
+m, err := monitor.New(cwd, nil, 0)
+
+...
+
+//make sure you handle the monitor errors asynchronously
+go func() {
+	for err := range m.Errors() {
+		...
+	}
+}()
+
+...
+
+//start the monitor, this won't block 
+evs, err := m.Start()
+
+...
+
+//handle the directory events anyway you like
+for ev := range evs {
+	fmt.Println(ev.Dir())
+}
+```
+
+As another option you could `go get` the super simple main package and run it to see if you like _snow's_ behaviour:
+
+```
+go get -u github.com/timeglass/now
+```

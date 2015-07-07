@@ -9,8 +9,8 @@ import (
 )
 
 func main() {
-	log := log.New(os.Stdout, "Snow: ", 0)
-	log.Printf(`Greetings, I'm the file system watcher that knows nothing...`)
+	log.SetOutput(os.Stderr)
+	log.SetPrefix("snow: ")
 
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -22,6 +22,7 @@ func main() {
 		log.Fatalf("Failed to create monitor for '%s': %s", cwd, err)
 	}
 
+	log.Printf(`Greetings, I'm the file system watcher that knows nothing...`)
 	go func() {
 		for err := range m.Errors() {
 			log.Println(err)
@@ -30,7 +31,7 @@ func main() {
 
 	evs, err := m.Start()
 	if err != nil {
-		log.Fatalf("Failed to start monitor for '%s': %s", m.Dir(), err)
+		log.Fatalf("Failed to start monitor for '%s': %s", cwd, err)
 	}
 
 	log.Printf(`Watching directory '%s'`, m.Dir())
