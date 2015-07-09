@@ -36,7 +36,7 @@ func main() {
 	}
 
 	//use an index for file events
-	idx, err := index.NewIndex(evs)
+	idx, err := index.NewLazy(evs)
 	if err != nil {
 		log.Fatalf("Failed to create index: %s", err)
 	}

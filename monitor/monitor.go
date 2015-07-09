@@ -51,6 +51,8 @@ func (m *monitor) throttle() {
 		case <-m.stop:
 			return
 		case ev := <-m.unthrottled:
+			fmt.Println("UN:", ev.Dir())
+
 			if until, ok := throttles[ev.Dir()]; ok {
 				diff := until.Sub(time.Now())
 				if diff > 0 {
