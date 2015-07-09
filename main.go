@@ -3,8 +3,9 @@ package main
 import (
 	"log"
 	"os"
-	"path/filepath"
+	// "path/filepath"
 
+	"github.com/timeglass/snow/index"
 	"github.com/timeglass/snow/monitor"
 )
 
@@ -34,13 +35,22 @@ func main() {
 		log.Fatalf("Failed to start monitor for '%s': %s", cwd, err)
 	}
 
-	log.Printf(`Watching directory '%s'`, m.Dir())
-	for ev := range evs {
-		rel, err := filepath.Rel(m.Dir(), ev.Dir())
-		if err != nil {
-			log.Fatalf("Failure to determine relative path for '%s': %s", ev.Dir(), err)
-		}
-
-		log.Printf("Something happened to or in '/%s'", rel)
+	//use an index for file events
+	idx, err := index.NewLazy(evs)
+	if err != nil {
+		log.Fatalf("Failed to create index: %s", err)
 	}
+
+	idx.Start()
+
+	// //but also log dir events
+	// log.Printf(`Watching directory '%s'`, m.Dir())
+	// for ev := range evs {
+	// 	rel, err := filepath.Rel(m.Dir(), ev.Dir())
+	// 	if err != nil {
+	// 		log.Fatalf("Failure to determine relative path for '%s': %s", ev.Dir(), err)
+	// 	}
+
+	// 	log.Printf("Something happened to or in '/%s'", rel)
+	// }
 }
